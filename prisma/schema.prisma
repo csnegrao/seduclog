@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  WAREHOUSE_OPERATOR
+  DRIVER
+  REQUESTER
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  PICKING
+  DISPATCHED
+  DELIVERED
+  PARTIAL
+  CANCELLED
+}
+
+enum DeliveryOrderStatus {
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  PARTIAL
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  RETURN
+  ADJUSTMENT
+}
+
+enum ChecklistStatus {
+  DELIVERED
+  MISSING
+  DIFFERENT_QTY
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  deliveryOrders DeliveryOrder[]
+  occurrences    Occurrence[]
+  notifications  Notification[]
+  messages       Message[]
+}
+
+model School {
+  id        String  @id @default(uuid())
+  name      String
+  address   String
+  city      String
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  materialRequests MaterialRequest[]
+}
+
+model Supplier {
+  id        String   @id @default(uuid())
+  name      String
+  cnpj      String   @unique
+  contact   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+}
+
+model Vehicle {
+  id           String        @id @default(uuid())
+  plate        String        @unique
+  model        String
+  capacity     Float
+  status       VehicleStatus @default(AVAILABLE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  deliveryOrders DeliveryOrder[]
+}
+
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  unit          String
+  stock         Int      @default(0)
+  shelfLocation String?
+  supplierId    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  supplier       Supplier?        @relation(fields: [supplierId], references: [id])
+  stockMovements StockMovement[]
+  requestItems   RequestItem[]
+}
+
+model StockMovement {
+  id         String            @id @default(uuid())
+  productId  String
+  type       StockMovementType
+  quantity   Int
+  reason     String?
+  createdAt  DateTime          @default(now())
+
+  product Product @relation(fields: [productId], references: [id])
+}
+
+model MaterialRequest {
+  id        String        @id @default(uuid())
+  schoolId  String
+  status    RequestStatus @default(PENDING)
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  school         School          @relation(fields: [schoolId], references: [id])
+  requestItems   RequestItem[]
+  deliveryOrders DeliveryOrder[]
+  messages       Message[]
+  notifications  Notification[]
+}
+
+model RequestItem {
+  id              String  @id @default(uuid())
+  materialRequestId String
+  productId       String
+  quantity        Int
+  deliveredQty    Int     @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  materialRequest MaterialRequest    @relation(fields: [materialRequestId], references: [id])
+  product         Product            @relation(fields: [productId], references: [id])
+  checklistItems  DeliveryChecklist[]
+}
+
+model DeliveryOrder {
+  id                String              @id @default(uuid())
+  materialRequestId String
+  driverId          String
+  vehicleId         String
+  status            DeliveryOrderStatus @default(ASSIGNED)
+  pickupPhotoUrl    String?
+  deliveryPhotoUrl  String?
+  signatureUrl      String?
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  materialRequest MaterialRequest    @relation(fields: [materialRequestId], references: [id])
+  driver          User               @relation(fields: [driverId], references: [id])
+  vehicle         Vehicle            @relation(fields: [vehicleId], references: [id])
+  routeUpdates    RouteUpdate[]
+  checklist       DeliveryChecklist[]
+  occurrences     Occurrence[]
+}
+
+model DeliveryChecklist {
+  id              String          @id @default(uuid())
+  deliveryOrderId String
+  requestItemId   String
+  status          ChecklistStatus
+  actualQty       Int?
+  createdAt       DateTime        @default(now())
+
+  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderId], references: [id])
+  requestItem   RequestItem   @relation(fields: [requestItemId], references: [id])
+}
+
+model RouteUpdate {
+  id              String   @id @default(uuid())
+  deliveryOrderId String
+  lat             Float
+  lng             Float
+  estimatedArrival DateTime?
+  createdAt       DateTime  @default(now())
+
+  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderId], references: [id])
+}
+
+model Occurrence {
+  id              String   @id @default(uuid())
+  deliveryOrderId String
+  reportedById    String
+  description     String
+  photoUrl        String?
+  createdAt       DateTime @default(now())
+
+  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderId], references: [id])
+  reportedBy    User          @relation(fields: [reportedById], references: [id])
+}
+
+model Notification {
+  id                String   @id @default(uuid())
+  userId            String
+  materialRequestId String?
+  title             String
+  body              String
+  read              Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  user            User             @relation(fields: [userId], references: [id])
+  materialRequest MaterialRequest? @relation(fields: [materialRequestId], references: [id])
+}
+
+model Message {
+  id                String   @id @default(uuid())
+  materialRequestId String
+  senderId          String
+  body              String
+  createdAt         DateTime @default(now())
+
+  materialRequest MaterialRequest @relation(fields: [materialRequestId], references: [id])
+  sender          User            @relation(fields: [senderId], references: [id])
+}
