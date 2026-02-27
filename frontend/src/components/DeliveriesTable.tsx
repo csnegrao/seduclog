@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { pdf, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import type { Divergence } from '../types';
 
 interface DeliveryRow {
@@ -96,18 +96,33 @@ export default function DeliveriesTable({ deliveries, divergences }: Props) {
     URL.revokeObjectURL(url);
   }
 
-  function exportExcel() {
-    const rows = deliveries.map((d) => ({
-      ID: d.request_id,
-      Escola: d.school_name,
-      Motorista: d.driver_name || '—',
-      'Data Entrega': d.delivered_at ? d.delivered_at.substring(0, 10) : '—',
-      Status: STATUS_LABELS[d.status] || d.status,
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Entregas');
-    XLSX.writeFile(wb, 'entregas.xlsx');
+  async function exportExcel() {
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Entregas');
+    ws.columns = [
+      { header: 'ID', key: 'id', width: 10 },
+      { header: 'Escola', key: 'escola', width: 30 },
+      { header: 'Motorista', key: 'motorista', width: 20 },
+      { header: 'Data Entrega', key: 'data', width: 15 },
+      { header: 'Status', key: 'status', width: 15 },
+    ];
+    deliveries.forEach((d) => {
+      ws.addRow({
+        id: d.request_id,
+        escola: d.school_name,
+        motorista: d.driver_name || '—',
+        data: d.delivered_at ? d.delivered_at.substring(0, 10) : '—',
+        status: STATUS_LABELS[d.status] || d.status,
+      });
+    });
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'entregas.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   return (
