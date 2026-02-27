@@ -153,7 +153,6 @@ export async function getDashboardReport(_req: Request, res: Response): Promise<
     inPickingOrders,
     activeDeliveries,
     deliveredToday,
-    lowStockCount,
   ] = await Promise.all([
     prisma.materialRequest.count(),
     prisma.materialRequest.count({ where: { status: 'PENDING' } }),
@@ -165,10 +164,12 @@ export async function getDashboardReport(_req: Request, res: Response): Promise<
         deliveredAt: { gte: new Date(new Date().setHours(0, 0, 0, 0)) },
       },
     }),
-    prisma.material.count({
-      where: { active: true, minStock: { gt: 0 } },
-    }),
   ]);
+
+  const lowStockResult = await prisma.$queryRaw<[{ count: bigint }]>`
+    SELECT COUNT(*) as count FROM materials
+    WHERE active = true AND min_stock > 0 AND current_stock <= min_stock`;
+  const lowStockCount = Number(lowStockResult[0]?.count ?? 0);
 
   res.json({
     totalRequests,

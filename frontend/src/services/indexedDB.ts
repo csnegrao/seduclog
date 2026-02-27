@@ -85,7 +85,10 @@ export async function getCachedDeliveries(): Promise<CachedDelivery[]> {
 
 export async function syncPendingActions(): Promise<void> {
   const token = localStorage.getItem('token');
-  if (!token) return;
+  if (!token) {
+    console.debug('[IndexedDB] syncPendingActions: no auth token, skipping sync.');
+    return;
+  }
 
   const actions = await getPendingActions();
   for (const action of actions) {

@@ -71,7 +71,7 @@ export async function createRequest(req: Request, res: Response): Promise<void> 
   const request = await prisma.materialRequest.create({
     data: {
       requesterId: req.user!.userId,
-      priority: priority as Priority || 'NORMAL',
+      priority: (priority as Priority) ?? 'NORMAL',
       notes,
       destination,
       items: {

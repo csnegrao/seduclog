@@ -81,7 +81,9 @@ function openDB() {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
     req.onupgradeneeded = () => {
-      req.result.createObjectStore('pendingActions', { keyPath: 'id', autoIncrement: true });
+      if (!req.result.objectStoreNames.contains('pendingActions')) {
+        req.result.createObjectStore('pendingActions', { keyPath: 'id', autoIncrement: true });
+      }
     };
   });
 }

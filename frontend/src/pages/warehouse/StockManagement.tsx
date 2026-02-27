@@ -63,7 +63,10 @@ export default function StockManagement() {
   });
 
   const updateMat = useMutation({
-    mutationFn: (d: MaterialForm) => materialsApi.update(editing!.id, d),
+    mutationFn: (d: MaterialForm) => {
+      if (!editing) throw new Error('No material selected for editing');
+      return materialsApi.update(editing.id, d);
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['materials'] }); setMatModal(false); setEditing(null); resetMat(); },
   });
 

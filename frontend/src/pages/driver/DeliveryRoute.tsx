@@ -57,7 +57,6 @@ function MapView({ delivery }: { delivery: Delivery }) {
         new window.google.maps.Marker({
           position: { lat: delivery.currentLat, lng: delivery.currentLng },
           map,
-          // @ts-expect-error google maps global
           icon: { url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png' },
           title: 'Motorista',
         });
@@ -150,6 +149,7 @@ export default function DeliveryRoute() {
   const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
   const [showSignature, setShowSignature] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [geoWarning, setGeoWarning] = useState(false);
 
   useEffect(() => {
     const onOnline = () => { setIsOnline(true); syncPendingActions(); };
@@ -184,7 +184,7 @@ export default function DeliveryRoute() {
       // Get current GPS location
       const position = await new Promise<GeolocationPosition>((resolve, reject) =>
         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 })
-      ).catch(() => null);
+      ).catch(() => { setGeoWarning(true); return null; });
 
       return deliveriesApi.updateStatus(id, status, position
         ? { lat: position.coords.latitude, lng: position.coords.longitude }
@@ -238,6 +238,12 @@ export default function DeliveryRoute() {
       {!isOnline && (
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800">
           ⚠️ Você está offline. As atualizações serão sincronizadas automaticamente quando a conexão for restaurada.
+        </div>
+      )}
+
+      {geoWarning && (
+        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-xl text-sm text-yellow-800">
+          📍 Não foi possível obter sua localização GPS. O status foi atualizado sem coordenadas.
         </div>
       )}
 
