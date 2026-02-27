@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  REQUESTER
+  WAREHOUSE_OPERATOR
+  DRIVER
+  ADMIN
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IN_TRANSIT
+  DELIVERED
+}
+
+enum OrderStatus {
+  PENDING
+  DISPATCHED
+  DELIVERED
+}
+
+enum NotificationType {
+  REQUEST_APPROVED
+  REQUEST_REJECTED
+  ORDER_DISPATCHED
+  DRIVER_ARRIVING
+  DELIVERY_CONFIRMED
+  STOCK_BELOW_MINIMUM
+  GENERAL
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          Role      @default(REQUESTER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  requests      Request[] @relation("RequesterRequests")
+  driverOrders  Request[] @relation("DriverRequests")
+  notifications Notification[]
+  messages      Message[]
+}
+
+model Request {
+  id          String        @id @default(cuid())
+  title       String
+  description String
+  status      RequestStatus @default(PENDING)
+  requesterId String
+  driverId    String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  requester   User    @relation("RequesterRequests", fields: [requesterId], references: [id])
+  driver      User?   @relation("DriverRequests", fields: [driverId], references: [id])
+  order       Order?
+  messages    Message[]
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  requestId  String      @unique
+  status     OrderStatus @default(PENDING)
+  driverEta  DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  request    Request @relation(fields: [requestId], references: [id])
+}
+
+model Stock {
+  id              String   @id @default(cuid())
+  productName     String
+  quantity        Int      @default(0)
+  minimumQuantity Int      @default(10)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType @default(GENERAL)
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user      User @relation(fields: [userId], references: [id])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  requestId String
+  senderId  String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  request   Request @relation(fields: [requestId], references: [id])
+  sender    User    @relation(fields: [senderId], references: [id])
+}
