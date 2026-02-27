@@ -1,0 +1,41 @@
+import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
+import { authenticate } from '../middleware/authenticate';
+import { authorize } from '../middleware/authorize';
+import {
+  createRequestHandler,
+  listRequestsHandler,
+  getRequestHandler,
+  approveRequestHandler,
+  cancelRequestHandler,
+} from '../controllers/request.controller';
+
+const requestLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later' },
+});
+
+const router = Router();
+
+// Rate-limit first, then authenticate on all request routes.
+router.use(requestLimiter, authenticate);
+
+/** POST /api/requests — create new request (REQUESTER only) */
+router.post('/', authorize('requester'), createRequestHandler);
+
+/** GET /api/requests — list with optional filters */
+router.get('/', listRequestsHandler);
+
+/** GET /api/requests/:id — request detail */
+router.get('/:id', getRequestHandler);
+
+/** PATCH /api/requests/:id/approve — WAREHOUSE_OPERATOR or admin */
+router.patch('/:id/approve', authorize('warehouse_operator', 'admin'), approveRequestHandler);
+
+/** PATCH /api/requests/:id/cancel — requester (own), warehouse_operator, or admin */
+router.patch('/:id/cancel', cancelRequestHandler);
+
+export default router;

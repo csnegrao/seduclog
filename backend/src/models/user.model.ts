@@ -43,6 +43,22 @@ const users: User[] = [
     role: 'driver',
     createdAt: new Date(),
   },
+  {
+    id: '4',
+    name: 'Requester User',
+    email: 'requester@seduclog.com',
+    passwordHash: bcrypt.hashSync('requester123', SEED_SALT_ROUNDS),
+    role: 'requester',
+    createdAt: new Date(),
+  },
+  {
+    id: '5',
+    name: 'Warehouse Operator',
+    email: 'warehouse@seduclog.com',
+    passwordHash: bcrypt.hashSync('warehouse123', SEED_SALT_ROUNDS),
+    role: 'warehouse_operator',
+    createdAt: new Date(),
+  },
 ];
 
 export function findUserByEmail(email: string): User | undefined {

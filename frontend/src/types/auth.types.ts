@@ -1,4 +1,10 @@
-export type UserRole = 'admin' | 'manager' | 'driver' | 'viewer';
+export type UserRole =
+  | 'admin'
+  | 'manager'
+  | 'driver'
+  | 'viewer'
+  | 'requester'
+  | 'warehouse_operator';
 
 export interface AuthUser {
   id: string;
