@@ -59,9 +59,17 @@ export interface StockLevel {
   total_quantity: number;
 }
 
+export interface CriticalStockItem {
+  id: number;
+  name: string;
+  school_name: string;
+  quantity: number;
+}
+
 export interface StockData {
   stock_levels: StockLevel[];
   top_products: TopProduct[];
+  critical_stock: CriticalStockItem[];
   period: { start: string; end: string };
 }
 

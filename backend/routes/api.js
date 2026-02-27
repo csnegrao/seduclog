@@ -171,7 +171,21 @@ router.get('/reports/stock', (req, res) => {
     LIMIT 10
   `).all(...itemParams);
 
-  res.json({ stock_levels: stockLevels, movements, top_products: topProducts, period: { start, end } });
+  let critWhere = 'WHERE s.quantity < 10';
+  const critParams = [];
+  if (schoolId) { critWhere += ' AND s.school_id = ?'; critParams.push(schoolId); }
+
+  const criticalStock = db.prepare(`
+    SELECT p.id, p.name, sc.name as school_name, s.quantity
+    FROM stock s
+    JOIN products p ON p.id = s.product_id
+    JOIN schools sc ON sc.id = s.school_id
+    ${critWhere}
+    ORDER BY s.quantity ASC
+    LIMIT 10
+  `).all(...critParams);
+
+  res.json({ stock_levels: stockLevels, movements, top_products: topProducts, critical_stock: criticalStock, period: { start, end } });
 });
 
 // GET /api/reports/driver-performance

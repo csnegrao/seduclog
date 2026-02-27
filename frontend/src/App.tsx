@@ -139,15 +139,14 @@ function App() {
 
               <div className="stat-card">
                 <h4>Estoque Crítico (abaixo de 10)</h4>
-                {stock?.stock_levels
-                  .filter((s) => s.total_quantity < 10)
-                  .slice(0, 5)
-                  .map((s) => (
-                    <div className="stat-item" key={s.id}>
-                      <span>{s.name}</span>
-                      <strong className="red">{s.total_quantity} un</strong>
+                {stock?.critical_stock && stock.critical_stock.length > 0
+                  ? stock.critical_stock.slice(0, 5).map((s) => (
+                    <div className="stat-item" key={`${s.id}-${s.school_name}`}>
+                      <span>{s.name} — {s.school_name}</span>
+                      <strong className="red">{s.quantity} un</strong>
                     </div>
-                  )) ?? <p className="no-data">Sem alertas</p>}
+                  ))
+                  : <p className="no-data">Sem alertas</p>}
               </div>
 
               <div className="stat-card">
