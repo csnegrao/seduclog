@@ -32,12 +32,8 @@ async function getMessages(req, res) {
  */
 async function sendMessage(req, res) {
   const { requestId } = req.params;
-  const { content } = req.body;
+  const { content } = req.body; // already trimmed and validated by Zod
   const io = req.app.get('io');
-
-  if (!content || !content.trim()) {
-    return res.status(400).json({ error: 'Message content is required' });
-  }
 
   try {
     const request = await prisma.request.findUnique({
@@ -50,7 +46,7 @@ async function sendMessage(req, res) {
       data: {
         requestId,
         senderId: req.user.id,
-        content: content.trim(),
+        content,
       },
       include: {
         sender: { select: { id: true, name: true, role: true } },

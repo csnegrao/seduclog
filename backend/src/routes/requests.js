@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../prismaClient');
 const { authenticate, authorize } = require('../middleware/auth');
+const { validate } = require('../middleware/validate');
+const { createRequestSchema, updateRequestStatusSchema } = require('../schemas/requestSchemas');
 const { createNotification } = require('../services/notificationService');
 
 // GET /api/requests — list all requests (ADMIN and WAREHOUSE_OPERATOR see all; others see own)
@@ -46,32 +48,34 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// POST /api/requests — create a request (REQUESTER only)
-router.post('/', authenticate, authorize('REQUESTER', 'ADMIN'), async (req, res) => {
-  const { title, description } = req.body;
-  if (!title) return res.status(400).json({ error: 'title is required' });
-  try {
-    const request = await prisma.request.create({
-      data: { title, description: description || '', requesterId: req.user.id },
-    });
-    res.status(201).json(request);
-  } catch {
-    res.status(500).json({ error: 'Failed to create request' });
-  }
-});
+// POST /api/requests — create a request (REQUESTER / ADMIN)
+router.post(
+  '/',
+  authenticate,
+  authorize('REQUESTER', 'ADMIN'),
+  validate(createRequestSchema),
+  async (req, res) => {
+    const { title, description } = req.body;
+    try {
+      const request = await prisma.request.create({
+        data: { title, description, requesterId: req.user.id },
+      });
+      res.status(201).json(request);
+    } catch {
+      res.status(500).json({ error: 'Failed to create request' });
+    }
+  },
+);
 
 // PATCH /api/requests/:id/status — approve or reject (WAREHOUSE_OPERATOR / ADMIN)
 router.patch(
   '/:id/status',
   authenticate,
   authorize('WAREHOUSE_OPERATOR', 'ADMIN'),
+  validate(updateRequestStatusSchema),
   async (req, res) => {
     const { status } = req.body;
     const io = req.app.get('io');
-    const allowedStatuses = ['APPROVED', 'REJECTED', 'IN_TRANSIT', 'DELIVERED'];
-    if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
     try {
       const request = await prisma.request.update({
         where: { id: req.params.id },

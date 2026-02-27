@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../prismaClient');
 const { authenticate, authorize } = require('../middleware/auth');
+const { validate } = require('../middleware/validate');
+const { createOrderSchema, updateOrderStatusSchema } = require('../schemas/orderSchemas');
 const { createNotification } = require('../services/notificationService');
 
 // GET /api/orders — list orders
@@ -18,34 +20,35 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // POST /api/orders — create an order for a request (WAREHOUSE_OPERATOR / ADMIN)
-router.post('/', authenticate, authorize('WAREHOUSE_OPERATOR', 'ADMIN'), async (req, res) => {
-  const { requestId } = req.body;
-  const io = req.app.get('io');
-  if (!requestId) return res.status(400).json({ error: 'requestId is required' });
-  try {
-    const request = await prisma.request.findUnique({ where: { id: requestId } });
-    if (!request) return res.status(404).json({ error: 'Request not found' });
+router.post(
+  '/',
+  authenticate,
+  authorize('WAREHOUSE_OPERATOR', 'ADMIN'),
+  validate(createOrderSchema),
+  async (req, res) => {
+    const { requestId } = req.body;
+    try {
+      const request = await prisma.request.findUnique({ where: { id: requestId } });
+      if (!request) return res.status(404).json({ error: 'Request not found' });
 
-    const order = await prisma.order.create({ data: { requestId, status: 'PENDING' } });
-    return res.status(201).json(order);
-  } catch (err) {
-    if (err.code === 'P2002') return res.status(409).json({ error: 'Order already exists for this request' });
-    res.status(500).json({ error: 'Failed to create order' });
-  }
-});
+      const order = await prisma.order.create({ data: { requestId, status: 'PENDING' } });
+      return res.status(201).json(order);
+    } catch (err) {
+      if (err.code === 'P2002') return res.status(409).json({ error: 'Order already exists for this request' });
+      res.status(500).json({ error: 'Failed to create order' });
+    }
+  },
+);
 
 // PATCH /api/orders/:id/status — update order status (DRIVER / WAREHOUSE_OPERATOR / ADMIN)
 router.patch(
   '/:id/status',
   authenticate,
   authorize('DRIVER', 'WAREHOUSE_OPERATOR', 'ADMIN'),
+  validate(updateOrderStatusSchema),
   async (req, res) => {
     const { status, driverEta } = req.body;
     const io = req.app.get('io');
-    const allowedStatuses = ['PENDING', 'DISPATCHED', 'DELIVERED'];
-    if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
     try {
       const order = await prisma.order.update({
         where: { id: req.params.id },

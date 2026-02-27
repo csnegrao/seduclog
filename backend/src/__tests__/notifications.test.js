@@ -184,7 +184,7 @@ describe('Messages', () => {
       .post(`/api/messages/${testRequestId}`)
       .set('Authorization', `Bearer ${requesterToken}`)
       .send({ content: '  ' });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('GET /api/messages/:requestId — returns messages in order', async () => {
