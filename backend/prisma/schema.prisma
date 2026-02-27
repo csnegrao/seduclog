@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  WAREHOUSE_OPERATOR
+  DRIVER
+  REQUESTER
+  MANAGER
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  IN_PICKING
+  READY
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryStatus {
+  PENDING
+  EN_ROUTE
+  ARRIVED
+  DELIVERED
+  FAILED
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  TRANSFER
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum InventoryStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+model User {
+  id             String   @id @default(cuid())
+  name           String
+  email          String   @unique
+  passwordHash   String
+  role           Role     @default(REQUESTER)
+  school         String?
+  sector         String?
+  phone          String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  requests          MaterialRequest[]
+  pickingOrders     PickingOrder[]
+  deliveries        Delivery[]
+  stockMovements    StockMovement[]
+  inventorySessions InventorySession[]
+
+  @@map("users")
+}
+
+model Vehicle {
+  id           String   @id @default(cuid())
+  plate        String   @unique
+  model        String
+  capacity     String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  deliveries   Delivery[]
+
+  @@map("vehicles")
+}
+
+model Material {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  unit         String
+  category     String
+  currentStock Int      @default(0)
+  minStock     Int      @default(0)
+  maxStock     Int?
+  sku          String?  @unique
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  requestItems   RequestItem[]
+  stockMovements StockMovement[]
+  checklistItems ChecklistItem[]
+  inventoryItems InventoryItem[]
+
+  @@map("materials")
+}
+
+model MaterialRequest {
+  id          String        @id @default(cuid())
+  requesterId String
+  requester   User          @relation(fields: [requesterId], references: [id])
+  status      RequestStatus @default(PENDING)
+  priority    Priority      @default(NORMAL)
+  notes       String?
+  destination String?
+  desiredDate DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  items        RequestItem[]
+  pickingOrder PickingOrder?
+
+  @@map("material_requests")
+}
+
+model RequestItem {
+  id           String          @id @default(cuid())
+  requestId    String
+  request      MaterialRequest @relation(fields: [requestId], references: [id])
+  materialId   String
+  material     Material        @relation(fields: [materialId], references: [id])
+  quantity     Int
+  fulfilledQty Int             @default(0)
+  notes        String?
+
+  @@map("request_items")
+}
+
+model PickingOrder {
+  id         String      @id @default(cuid())
+  requestId  String      @unique
+  request    MaterialRequest @relation(fields: [requestId], references: [id])
+  operatorId String?
+  operator   User?       @relation(fields: [operatorId], references: [id])
+  status     OrderStatus @default(PENDING)
+  notes      String?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  delivery      Delivery?
+  checklistItems ChecklistItem[]
+
+  @@map("picking_orders")
+}
+
+model ChecklistItem {
+  id             String       @id @default(cuid())
+  pickingOrderId String
+  pickingOrder   PickingOrder @relation(fields: [pickingOrderId], references: [id])
+  materialId     String
+  material       Material     @relation(fields: [materialId], references: [id])
+  requiredQty    Int
+  confirmedQty   Int          @default(0)
+  confirmed      Boolean      @default(false)
+  confirmedAt    DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@map("checklist_items")
+}
+
+model Delivery {
+  id             String         @id @default(cuid())
+  pickingOrderId String         @unique
+  pickingOrder   PickingOrder   @relation(fields: [pickingOrderId], references: [id])
+  driverId       String?
+  driver         User?          @relation(fields: [driverId], references: [id])
+  vehicleId      String?
+  vehicle        Vehicle?       @relation(fields: [vehicleId], references: [id])
+  status         DeliveryStatus @default(PENDING)
+  destination    String?
+  destinationLat Float?
+  destinationLng Float?
+  currentLat     Float?
+  currentLng     Float?
+  startedAt      DateTime?
+  arrivedAt      DateTime?
+  deliveredAt    DateTime?
+  signatureUrl   String?
+  signatureData  String?        @db.Text
+  recipientName  String?
+  notes          String?
+  routeData      Json?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("deliveries")
+}
+
+model StockMovement {
+  id          String       @id @default(cuid())
+  materialId  String
+  material    Material     @relation(fields: [materialId], references: [id])
+  type        MovementType
+  quantity    Int
+  reason      String?
+  reference   String?
+  invoiceRef  String?
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  createdAt   DateTime     @default(now())
+
+  @@map("stock_movements")
+}
+
+model InventorySession {
+  id          String          @id @default(cuid())
+  operatorId  String
+  operator    User            @relation(fields: [operatorId], references: [id])
+  status      InventoryStatus @default(OPEN)
+  notes       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  closedAt    DateTime?
+
+  items       InventoryItem[]
+
+  @@map("inventory_sessions")
+}
+
+model InventoryItem {
+  id                String           @id @default(cuid())
+  inventorySessionId String
+  inventorySession  InventorySession @relation(fields: [inventorySessionId], references: [id])
+  materialId        String
+  material          Material         @relation(fields: [materialId], references: [id])
+  systemQty         Int
+  physicalQty       Int?
+  adjustment        Int?
+  reconciled        Boolean          @default(false)
+  reconciledAt      DateTime?
+
+  @@map("inventory_items")
+}

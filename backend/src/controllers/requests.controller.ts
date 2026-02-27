@@ -1,0 +1,90 @@
+import { Request, Response } from 'express';
+import { PrismaClient, RequestStatus, Priority } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+export async function listRequests(req: Request, res: Response): Promise<void> {
+  const { role, userId } = req.user!;
+  const where: Record<string, unknown> = {};
+  if (role === 'REQUESTER') where.requesterId = userId;
+
+  const requests = await prisma.materialRequest.findMany({
+    where,
+    include: {
+      requester: { select: { id: true, name: true, school: true, email: true } },
+      items: {
+        include: { material: { select: { id: true, name: true, unit: true } } },
+      },
+      pickingOrder: {
+        include: { delivery: { select: { id: true, status: true } } },
+      },
+    },
+    orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+  });
+  res.json(requests);
+}
+
+export async function getRequest(req: Request, res: Response): Promise<void> {
+  const request = await prisma.materialRequest.findUnique({
+    where: { id: req.params.id },
+    include: {
+      requester: { select: { id: true, name: true, school: true } },
+      items: {
+        include: { material: { select: { id: true, name: true, unit: true, currentStock: true } } },
+      },
+      pickingOrder: {
+        include: {
+          checklistItems: { include: { material: { select: { id: true, name: true, unit: true } } } },
+          delivery: true,
+        },
+      },
+    },
+  });
+  if (!request) {
+    res.status(404).json({ error: 'Request not found' });
+    return;
+  }
+  res.json(request);
+}
+
+export async function createRequest(req: Request, res: Response): Promise<void> {
+  const { items, priority, notes, destination, desiredDate } = req.body;
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    res.status(400).json({ error: 'Items are required' });
+    return;
+  }
+
+  const request = await prisma.materialRequest.create({
+    data: {
+      requesterId: req.user!.userId,
+      priority: (priority as Priority) || 'NORMAL',
+      notes,
+      destination,
+      desiredDate: desiredDate ? new Date(desiredDate) : undefined,
+      items: {
+        create: items.map((item: { materialId: string; quantity: number; notes?: string }) => ({
+          materialId: item.materialId,
+          quantity: item.quantity,
+          notes: item.notes,
+        })),
+      },
+    },
+    include: {
+      items: { include: { material: { select: { id: true, name: true, unit: true } } } },
+    },
+  });
+  res.status(201).json(request);
+}
+
+export async function updateRequestStatus(req: Request, res: Response): Promise<void> {
+  const { status, notes } = req.body;
+  try {
+    const request = await prisma.materialRequest.update({
+      where: { id: req.params.id },
+      data: { status: status as RequestStatus, ...(notes && { notes }) },
+    });
+    res.json(request);
+  } catch {
+    res.status(404).json({ error: 'Request not found' });
+  }
+}
