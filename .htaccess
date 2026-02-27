@@ -1,0 +1,37 @@
+# LiteSpeed / Apache configuration for seduclog
+
+Options -Indexes
+Options +FollowSymLinks
+
+# Enable URL rewriting
+RewriteEngine On
+
+# Redirect all requests to index.php (front controller)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Protect sensitive files
+<FilesMatch "(^\.env|composer\.lock|composer\.json)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Protect config directory
+<IfModule mod_rewrite.c>
+    RewriteRule ^config/ - [F,L]
+</IfModule>
+
+# PHP settings compatible with LiteSpeed
+<IfModule LiteSpeed>
+    php_value display_errors 0
+    php_value log_errors 1
+</IfModule>
