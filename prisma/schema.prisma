@@ -1,0 +1,311 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  WAREHOUSE_OPERATOR
+  DRIVER
+  REQUESTER
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  RETURN
+  ADJUSTMENT
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  PICKING
+  DISPATCHED
+  DELIVERED
+  PARTIAL
+  CANCELLED
+}
+
+enum RequestItemStatus {
+  OK
+  MISSING
+  DIFFERENT_QTY
+}
+
+enum DeliveryOrderStatus {
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  PARTIAL
+}
+
+enum DeliveryChecklistStatus {
+  DELIVERED
+  MISSING
+  DIFFERENT_QTY
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role
+  phone        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  stockMovements   StockMovement[]
+  materialRequests MaterialRequest[]
+  deliveryOrders   DeliveryOrder[]
+  notifications    Notification[]
+  messages         Message[]
+
+  @@map("users")
+}
+
+model School {
+  id              String @id @default(cuid())
+  name            String
+  address         String
+  lat             Float
+  lng             Float
+  responsibleName String @map("responsible_name")
+  phone           String
+  email           String
+
+  materialRequests MaterialRequest[]
+
+  @@map("schools")
+}
+
+model Supplier {
+  id      String @id @default(cuid())
+  name    String
+  cnpj    String @unique
+  contact String
+  email   String
+  phone   String
+
+  @@map("suppliers")
+}
+
+model Vehicle {
+  id       String        @id @default(cuid())
+  plate    String        @unique
+  model    String
+  capacity Int
+  status   VehicleStatus @default(AVAILABLE)
+
+  deliveryOrders DeliveryOrder[]
+
+  @@map("vehicles")
+}
+
+model Product {
+  id            String  @id @default(cuid())
+  code          String  @unique
+  name          String
+  category      String
+  unit          String
+  minStock      Int     @map("min_stock")
+  currentStock  Int     @default(0) @map("current_stock")
+  shelfLocation String? @map("shelf_location")
+  photoUrl      String? @map("photo_url")
+
+  stockMovements StockMovement[]
+  requestItems   RequestItem[]
+
+  @@map("products")
+}
+
+model StockMovement {
+  id            String            @id @default(cuid())
+  productId     String            @map("product_id")
+  type          StockMovementType
+  quantity      Int
+  referenceId   String?           @map("reference_id")
+  referenceType String?           @map("reference_type")
+  operatorId    String            @map("operator_id")
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  product  Product @relation(fields: [productId], references: [id])
+  operator User    @relation(fields: [operatorId], references: [id])
+
+  @@index([productId])
+  @@index([operatorId])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
+
+model MaterialRequest {
+  id           String        @id @default(cuid())
+  protocol     String        @unique
+  requesterId  String        @map("requester_id")
+  schoolId     String        @map("school_id")
+  status       RequestStatus @default(PENDING)
+  desiredDate   DateTime      @map("desired_date")
+  justification String        @db.Text
+  notes         String?       @db.Text
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  requester      User            @relation(fields: [requesterId], references: [id])
+  school         School          @relation(fields: [schoolId], references: [id])
+  items          RequestItem[]
+  deliveryOrders DeliveryOrder[]
+  messages       Message[]
+
+  @@index([requesterId])
+  @@index([schoolId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("material_requests")
+}
+
+model RequestItem {
+  id           String             @id @default(cuid())
+  requestId    String             @map("request_id")
+  productId    String             @map("product_id")
+  requestedQty Int                @map("requested_qty")
+  approvedQty  Int?               @map("approved_qty")
+  deliveredQty Int?               @map("delivered_qty")
+  status       RequestItemStatus?
+  notes        String?
+
+  request            MaterialRequest     @relation(fields: [requestId], references: [id])
+  product            Product             @relation(fields: [productId], references: [id])
+  deliveryChecklists DeliveryChecklist[]
+
+  @@index([requestId])
+  @@index([productId])
+  @@map("request_items")
+}
+
+model DeliveryOrder {
+  id           String              @id @default(cuid())
+  requestId    String              @map("request_id")
+  driverId     String              @map("driver_id")
+  vehicleId    String              @map("vehicle_id")
+  status       DeliveryOrderStatus @default(ASSIGNED)
+  departureAt  DateTime?           @map("departure_at")
+  arrivalAt    DateTime?           @map("arrival_at")
+  signatureUrl String?             @map("signature_url")
+  photoUrl     String?             @map("photo_url")
+  notes        String?
+
+  request      MaterialRequest     @relation(fields: [requestId], references: [id])
+  driver       User                @relation(fields: [driverId], references: [id])
+  vehicle      Vehicle             @relation(fields: [vehicleId], references: [id])
+  checklists   DeliveryChecklist[]
+  routeUpdates RouteUpdate[]
+  occurrences  Occurrence[]
+
+  @@index([requestId])
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([status])
+  @@map("delivery_orders")
+}
+
+model DeliveryChecklist {
+  id              String                  @id @default(cuid())
+  deliveryOrderId String                  @map("delivery_order_id")
+  requestItemId   String                  @map("request_item_id")
+  deliveredQty    Int                     @map("delivered_qty")
+  status          DeliveryChecklistStatus
+  notes           String?
+
+  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderId], references: [id])
+  requestItem   RequestItem   @relation(fields: [requestItemId], references: [id])
+
+  @@index([deliveryOrderId])
+  @@index([requestItemId])
+  @@map("delivery_checklists")
+}
+
+model RouteUpdate {
+  id               String    @id @default(cuid())
+  deliveryOrderId  String    @map("delivery_order_id")
+  lat              Float
+  lng              Float
+  estimatedArrival DateTime? @map("estimated_arrival")
+  recordedAt       DateTime  @default(now()) @map("recorded_at")
+
+  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderId], references: [id])
+
+  @@index([deliveryOrderId])
+  @@index([recordedAt])
+  @@map("route_updates")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  title       String
+  body        String
+  type        String
+  referenceId String?  @map("reference_id")
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  requestId String   @map("request_id")
+  senderId  String   @map("sender_id")
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  request MaterialRequest @relation(fields: [requestId], references: [id])
+  sender  User            @relation(fields: [senderId], references: [id])
+
+  @@index([requestId])
+  @@index([senderId])
+  @@index([createdAt])
+  @@map("messages")
+}
+
+model Occurrence {
+  id              String   @id @default(cuid())
+  deliveryOrderId String   @map("delivery_order_id")
+  type            String
+  description     String        @db.Text
+  photoUrl        String?  @map("photo_url")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  deliveryOrder DeliveryOrder @relation(fields: [deliveryOrderId], references: [id])
+
+  @@index([deliveryOrderId])
+  @@index([createdAt])
+  @@map("occurrences")
+}

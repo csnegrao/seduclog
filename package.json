@@ -1,0 +1,25 @@
+{
+  "name": "seduclog",
+  "version": "1.0.0",
+  "description": "applicativo de acompanhamento e gerenciamento de entregas",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/csnegrao/seduclog.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/csnegrao/seduclog/issues"
+  },
+  "homepage": "https://github.com/csnegrao/seduclog#readme",
+  "devDependencies": {
+    "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0"
+  }
+}
