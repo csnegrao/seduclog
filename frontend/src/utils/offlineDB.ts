@@ -1,5 +1,10 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
+export interface CachedOrder {
+  id: string;
+  [key: string]: unknown;
+}
+
 interface SeduclogDB extends DBSchema {
   pendingDeliveries: {
     key: string;
@@ -14,7 +19,7 @@ interface SeduclogDB extends DBSchema {
   };
   cachedOrders: {
     key: string;
-    value: unknown;
+    value: CachedOrder;
   };
 }
 
@@ -25,7 +30,7 @@ async function getDB(): Promise<IDBPDatabase<SeduclogDB>> {
     dbInstance = await openDB<SeduclogDB>('seduclog', 1, {
       upgrade(db) {
         db.createObjectStore('pendingDeliveries', { keyPath: 'id' });
-        db.createObjectStore('cachedOrders', { keyPath: 'id' as never });
+        db.createObjectStore('cachedOrders', { keyPath: 'id' });
       },
     });
   }
@@ -52,7 +57,7 @@ export async function removePendingAction(id: string): Promise<void> {
   await db.delete('pendingDeliveries', id);
 }
 
-export async function cacheOrders(orders: unknown[]): Promise<void> {
+export async function cacheOrders(orders: CachedOrder[]): Promise<void> {
   const db = await getDB();
   const tx = db.transaction('cachedOrders', 'readwrite');
   await tx.store.clear();
@@ -62,7 +67,7 @@ export async function cacheOrders(orders: unknown[]): Promise<void> {
   await tx.done;
 }
 
-export async function getCachedOrders(): Promise<unknown[]> {
+export async function getCachedOrders(): Promise<CachedOrder[]> {
   const db = await getDB();
   return db.getAll('cachedOrders');
 }

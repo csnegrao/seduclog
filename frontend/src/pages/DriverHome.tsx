@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { DeliveryOrder } from '../types/driver.types';
-import { cacheOrders, getCachedOrders } from '../utils/offlineDB';
+import { cacheOrders, getCachedOrders, CachedOrder } from '../utils/offlineDB';
 import { syncPendingActions } from '../utils/syncQueue';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
@@ -28,19 +28,19 @@ export function DriverHome({ onSelectOrder }: DriverHomeProps) {
         });
         if (!res.ok) throw new Error('Falha ao carregar pedidos');
         const data = await res.json() as { orders: DeliveryOrder[] };
-        await cacheOrders(data.orders);
+        await cacheOrders(data.orders as unknown as CachedOrder[]);
         setOrders(data.orders);
         // Sync any pending offline actions
         await syncPendingActions(accessToken);
       } else {
         const cached = await getCachedOrders();
-        setOrders(cached as DeliveryOrder[]);
+        setOrders(cached as unknown as DeliveryOrder[]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar pedidos');
       // Fallback to cache
       const cached = await getCachedOrders();
-      setOrders(cached as DeliveryOrder[]);
+      setOrders(cached as unknown as DeliveryOrder[]);
     } finally {
       setLoading(false);
     }
@@ -128,7 +128,7 @@ export function DriverHome({ onSelectOrder }: DriverHomeProps) {
                 {order.materialRequest.school.address}, {order.materialRequest.school.city}
               </p>
               <p style={styles.cardItems}>
-                {order.materialRequest.requestItems.length} item(ns) •{' '}
+                {order.materialRequest.requestItems.length} item(s) •{' '}
                 <span style={styles.plate}>{order.vehicle.plate}</span>
               </p>
               {order.routeUpdates.length > 0 && order.routeUpdates[0].estimatedArrival && (

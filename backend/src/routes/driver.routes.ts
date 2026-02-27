@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
+import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/authenticate';
 import { authorize } from '../middleware/authorize';
 import {
@@ -13,6 +14,13 @@ import {
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+const driverLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: { error: 'Too many requests, please try again later' },
+});
+
+router.use(driverLimiter);
 router.use(authenticate);
 router.use(authorize('DRIVER'));
 

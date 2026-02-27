@@ -11,8 +11,14 @@ const authLimiter = rateLimit({
   message: { error: 'Too many requests, please try again later' },
 });
 
+const meLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { error: 'Too many requests, please try again later' },
+});
+
 router.post('/login', authLimiter, login);
 router.post('/refresh', authLimiter, refresh);
-router.get('/me', authenticate, me);
+router.get('/me', meLimiter, authenticate, me);
 
 export default router;

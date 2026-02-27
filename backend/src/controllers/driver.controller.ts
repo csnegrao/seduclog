@@ -50,7 +50,7 @@ export async function confirmPickup(req: Request, res: Response): Promise<void> 
     where: { id },
     data: {
       status: 'PICKED_UP',
-      pickupPhotoUrl: pickupPhotoUrl,
+      pickupPhotoUrl,
     },
   });
 

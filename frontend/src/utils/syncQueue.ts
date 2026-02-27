@@ -1,4 +1,4 @@
-import { getPendingActions, removePendingAction } from './offlineDB';
+import { getPendingActions, removePendingAction, CachedOrder } from './offlineDB';
 import { DeliveryOrder } from '../types/driver.types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
@@ -43,8 +43,8 @@ export async function syncPendingActions(accessToken: string): Promise<void> {
 
 export async function fetchOrdersWithFallback(
   accessToken: string,
-  getCached: () => Promise<unknown[]>,
-  cacheOrders: (orders: unknown[]) => Promise<void>,
+  getCached: () => Promise<CachedOrder[]>,
+  cacheOrders: (orders: CachedOrder[]) => Promise<void>,
 ): Promise<DeliveryOrder[]> {
   try {
     const res = await fetch(`${API_BASE}/api/driver/orders`, {
@@ -52,10 +52,10 @@ export async function fetchOrdersWithFallback(
     });
     if (!res.ok) throw new Error('Failed to fetch');
     const data = await res.json() as { orders: DeliveryOrder[] };
-    await cacheOrders(data.orders);
+    await cacheOrders(data.orders as unknown as CachedOrder[]);
     return data.orders;
   } catch {
     const cached = await getCached();
-    return cached as DeliveryOrder[];
+    return cached as unknown as DeliveryOrder[];
   }
 }
