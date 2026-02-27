@@ -1,0 +1,165 @@
+// Prisma schema for Seduclog — Material Request Module
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  WAREHOUSE_OPERATOR
+  DRIVER
+  REQUESTER
+  MANAGER
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  IN_PROGRESS
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  TRANSFER
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  role         Role     @default(REQUESTER)
+  school       String?
+  sector       String?
+  phone        String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  requests       MaterialRequest[]
+  stockMovements StockMovement[]
+  messages       Message[]
+  historyEntries RequestHistory[]
+
+  @@map("users")
+}
+
+model Material {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  unit         String
+  category     String
+  currentStock Int      @default(0) @map("current_stock")
+  minStock     Int      @default(0) @map("min_stock")
+  maxStock     Int?     @map("max_stock")
+  sku          String?  @unique
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  requestItems   RequestItem[]
+  stockMovements StockMovement[]
+
+  @@map("materials")
+}
+
+model MaterialRequest {
+  id            String        @id @default(cuid())
+  protocol      String        @unique
+  requesterId   String        @map("requester_id")
+  requester     User          @relation(fields: [requesterId], references: [id])
+  schoolId      String?       @map("school_id")
+  status        RequestStatus @default(PENDING)
+  desiredDate   DateTime      @map("desired_date")
+  justification String        @db.Text
+  notes         String?       @db.Text
+  driverLat     Float?        @map("driver_lat")
+  driverLng     Float?        @map("driver_lng")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  items   RequestItem[]
+  history RequestHistory[]
+  messages Message[]
+
+  @@index([requesterId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("material_requests")
+}
+
+model RequestItem {
+  id           String          @id @default(cuid())
+  requestId    String          @map("request_id")
+  request      MaterialRequest @relation(fields: [requestId], references: [id])
+  materialId   String          @map("material_id")
+  material     Material        @relation(fields: [materialId], references: [id])
+  requestedQty Int             @map("requested_qty")
+  approvedQty  Int?            @map("approved_qty")
+  notes        String?
+
+  @@index([requestId])
+  @@map("request_items")
+}
+
+model RequestHistory {
+  id        String          @id @default(cuid())
+  requestId String          @map("request_id")
+  request   MaterialRequest @relation(fields: [requestId], references: [id])
+  userId    String          @map("user_id")
+  user      User            @relation(fields: [userId], references: [id])
+  status    RequestStatus
+  notes     String?         @db.Text
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  @@index([requestId])
+  @@map("request_history")
+}
+
+model Message {
+  id        String          @id @default(cuid())
+  requestId String          @map("request_id")
+  request   MaterialRequest @relation(fields: [requestId], references: [id])
+  senderId  String          @map("sender_id")
+  sender    User            @relation(fields: [senderId], references: [id])
+  body      String          @db.Text
+  createdAt DateTime        @default(now()) @map("created_at")
+
+  @@index([requestId])
+  @@map("messages")
+}
+
+model StockMovement {
+  id         String       @id @default(cuid())
+  materialId String       @map("material_id")
+  material   Material     @relation(fields: [materialId], references: [id])
+  type       MovementType
+  quantity   Int
+  reason     String?
+  reference  String?
+  userId     String       @map("user_id")
+  user       User         @relation(fields: [userId], references: [id])
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  @@index([materialId])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
