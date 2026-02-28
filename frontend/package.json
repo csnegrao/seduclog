@@ -1,6 +1,36 @@
 {
   "name": "seduclog-frontend",
   "version": "1.0.0",
+  "description": "Seduclog frontend",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --watchAll=false"
+  },
+  "dependencies": {
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.0",
+    "exceljs": "^4.4.0",
+    "idb": "^8.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-scripts": "5.0.1",
+    "recharts": "^3.7.0",
+    "signature_pad": "^4.2.0",
+    "socket.io-client": "^4.8.3",
+    "typescript": "^5.4.5"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   "description": "AlmoxarifadoEdu Frontend",
   "type": "module",
   "scripts": {
