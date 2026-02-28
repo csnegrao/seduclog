@@ -22,6 +22,8 @@ export interface DeliveryOrder {
   id: string;
   requestId: string;
   requestProtocol: string;
+  school: string;
+  deliveryAddress?: string;
   driverId: string;
   driverName: string;
   vehicleId: string;
@@ -29,6 +31,12 @@ export interface DeliveryOrder {
   status: DeliveryOrderStatus;
   picklist: PicklistItem[];
   estimatedRoute?: string;
+  eta?: number;
+  pickupPhotoUrl?: string;
+  deliveryPhotoUrl?: string;
+  deliverySignature?: string;
+  deliveryNotes?: string;
+  deliveredAt?: string;
   createdAt: string;
   updatedAt: string;
 }

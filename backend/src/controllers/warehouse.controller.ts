@@ -98,6 +98,7 @@ export function createDeliveryOrderHandler(req: AuthenticatedRequest, res: Respo
     id: randomUUID(),
     requestId: materialRequest.id,
     requestProtocol: materialRequest.protocol,
+    school: materialRequest.school,
     driverId: driver.id,
     driverName: driver.name,
     vehicleId: vehicle.id,

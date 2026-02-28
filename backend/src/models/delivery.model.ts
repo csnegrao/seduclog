@@ -30,3 +30,7 @@ export function saveOrder(updated: DeliveryOrder): DeliveryOrder {
 export function findOrdersByStatus(status: DeliveryOrderStatus): DeliveryOrder[] {
   return orders.filter((o) => o.status === status);
 }
+
+export function findOrdersByDriver(driverId: string): DeliveryOrder[] {
+  return orders.filter((o) => o.driverId === driverId);
+}

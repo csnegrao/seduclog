@@ -17,3 +17,23 @@ export function emitRequestUpdated(request: MaterialRequest): void {
     io.emit('request:updated', request);
   }
 }
+
+/** Emits the "driver:location" event with latest position and ETA. */
+export function emitDriverLocation(payload: {
+  orderId: string;
+  driverId: string;
+  lat: number;
+  lng: number;
+  eta?: number;
+}): void {
+  if (io) {
+    io.emit('driver:location', payload);
+  }
+}
+
+/** Emits the "delivery:confirmed" event when a delivery is completed. */
+export function emitDeliveryConfirmed(payload: { orderId: string; requestId: string }): void {
+  if (io) {
+    io.emit('delivery:confirmed', payload);
+  }
+}

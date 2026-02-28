@@ -134,6 +134,8 @@ export interface DeliveryOrder {
   id: string;
   requestId: string;
   requestProtocol: string;
+  school: string;
+  deliveryAddress?: string;
   driverId: string;
   driverName: string;
   vehicleId: string;
@@ -141,6 +143,12 @@ export interface DeliveryOrder {
   status: DeliveryOrderStatus;
   picklist: PicklistItem[];
   estimatedRoute?: string;
+  eta?: number; // minutes
+  pickupPhotoUrl?: string;
+  deliveryPhotoUrl?: string;
+  deliverySignature?: string;
+  deliveryNotes?: string;
+  deliveredAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -204,4 +212,55 @@ export interface InventorySession {
 
 export interface ReconcileInventoryBody {
   counts: Array<{ productId: string; physicalCount: number }>;
+}
+
+// ─── Driver ───────────────────────────────────────────────────────────────────
+
+export interface RouteUpdate {
+  id: string;
+  orderId: string;
+  driverId: string;
+  lat: number;
+  lng: number;
+  eta?: number; // minutes
+  timestamp: Date;
+}
+
+export interface Occurrence {
+  id: string;
+  orderId: string;
+  driverId: string;
+  driverName: string;
+  description: string;
+  photoUrl?: string;
+  timestamp: Date;
+}
+
+export type DeliveryItemStatus = 'delivered' | 'missing' | 'partial';
+
+export interface DeliveryItemResult {
+  itemId: string;
+  status: DeliveryItemStatus;
+  deliveredQuantity: number;
+}
+
+export interface PickupBody {
+  photoBase64?: string;
+}
+
+export interface LocationBody {
+  lat: number;
+  lng: number;
+}
+
+export interface OccurrenceBody {
+  description: string;
+  photoBase64?: string;
+}
+
+export interface DeliverBody {
+  items: DeliveryItemResult[];
+  notes?: string;
+  signatureBase64: string;
+  photoBase64?: string;
 }
