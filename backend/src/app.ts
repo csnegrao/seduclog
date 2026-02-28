@@ -3,6 +3,7 @@ import authRouter from './routes/auth.routes';
 import requestRouter from './routes/request.routes';
 import warehouseRouter from './routes/warehouse.routes';
 import driverRouter from './routes/driver.routes';
+import reportsRouter from './routes/reports.routes';
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/requests', requestRouter);
 app.use('/api/warehouse', warehouseRouter);
 app.use('/api/driver', driverRouter);
+app.use('/api/reports', reportsRouter);
 
 // Health-check
 app.get('/health', (_req, res) => {
