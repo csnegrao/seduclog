@@ -15,6 +15,8 @@ import {
   incrementStock,
 } from '../models/product.model';
 import { findUserById } from '../models/user.model';
+import { findOrderByRequestId } from '../models/delivery.model';
+import { findLatestUpdate } from '../models/routeUpdate.model';
 import { emitRequestUpdated } from '../utils/socket';
 import {
   MaterialRequest,
@@ -316,4 +318,45 @@ export function cancelRequestHandler(req: AuthenticatedRequest, res: Response): 
   emitRequestUpdated(saved);
 
   res.status(200).json({ request: saved });
+}
+
+// ─── GET /api/requests/:id/tracking ──────────────────────────────────────────
+
+/**
+ * Returns real-time tracking information for a specific request:
+ *   - The linked delivery order (status, ETA, driver, vehicle)
+ *   - The latest driver position (lat/lng/eta from RouteUpdate)
+ *   - The current order status
+ *
+ * Available to any authenticated user; requesters can only view their own.
+ */
+export function getTrackingHandler(req: AuthenticatedRequest, res: Response): void {
+  const user = req.user!;
+  const { id } = req.params;
+
+  const materialRequest = findRequestById(id);
+  if (!materialRequest) {
+    res.status(404).json({ message: 'Request not found' });
+    return;
+  }
+
+  // Requesters can only track their own requests.
+  if (user.role === 'requester' && materialRequest.requesterId !== user.userId) {
+    res.status(403).json({ message: 'Access denied' });
+    return;
+  }
+
+  const order = findOrderByRequestId(id);
+  const latestPosition = order ? findLatestUpdate(order.id) : undefined;
+
+  res.status(200).json({
+    tracking: {
+      requestId: id,
+      requestStatus: materialRequest.status,
+      order: order ?? null,
+      position: latestPosition
+        ? { lat: latestPosition.lat, lng: latestPosition.lng, eta: latestPosition.eta }
+        : null,
+    },
+  });
 }

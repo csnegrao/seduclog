@@ -8,6 +8,7 @@ import {
   getRequestHandler,
   approveRequestHandler,
   cancelRequestHandler,
+  getTrackingHandler,
 } from '../controllers/request.controller';
 
 const requestLimiter = rateLimit({
@@ -31,6 +32,9 @@ router.get('/', listRequestsHandler);
 
 /** GET /api/requests/:id — request detail */
 router.get('/:id', getRequestHandler);
+
+/** GET /api/requests/:id/tracking — real-time tracking info for a request */
+router.get('/:id/tracking', getTrackingHandler);
 
 /** PATCH /api/requests/:id/approve — WAREHOUSE_OPERATOR or admin */
 router.patch('/:id/approve', authorize('warehouse_operator', 'admin'), approveRequestHandler);

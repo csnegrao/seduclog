@@ -67,3 +67,18 @@ export interface RequestFilters {
   to?: string;
   requesterId?: string;
 }
+
+// ─── Tracking ─────────────────────────────────────────────────────────────────
+
+export interface TrackingPosition {
+  lat: number;
+  lng: number;
+  eta?: number;
+}
+
+export interface TrackingInfo {
+  requestId: string;
+  requestStatus: RequestStatus;
+  order: import('./warehouse.types').DeliveryOrder | null;
+  position: TrackingPosition | null;
+}

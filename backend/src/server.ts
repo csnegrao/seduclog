@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import app from './app';
-import { setSocketServer } from './utils/socket';
+import { setSocketServer, registerSocketHandlers } from './utils/socket';
 
 const httpServer = createServer(app);
 
@@ -11,6 +11,10 @@ const io = new Server(httpServer, {
 });
 
 setSocketServer(io);
+
+io.on('connection', (socket) => {
+  registerSocketHandlers(socket);
+});
 
 const PORT = process.env.PORT ?? 3001;
 
