@@ -9,6 +9,7 @@ import { logRouteUpdate } from '../models/routeUpdate.model';
 import { createOccurrence } from '../models/occurrence.model';
 import { logMovement } from '../models/stockMovement.model';
 import { emitDriverLocation, emitDeliveryConfirmed, emitRequestUpdated } from '../utils/socket';
+import { pushNotification } from '../utils/notifications';
 import {
   RequestHistoryEntry,
   PickupBody,
@@ -102,6 +103,15 @@ export function pickupOrderHandler(req: AuthenticatedRequest, res: Response): vo
     });
 
     emitRequestUpdated(updatedRequest);
+
+    // Notify the requester that their order is now on its way.
+    pushNotification({
+      userId: materialRequest.requesterId,
+      event: 'order_dispatched',
+      title: 'Pedido em trânsito',
+      body: `Seu pedido ${materialRequest.protocol} saiu para entrega com o motorista ${driverName}.`,
+      referenceId: materialRequest.id,
+    });
   }
 
   res.status(200).json({ order: updatedOrder });
@@ -176,6 +186,20 @@ export async function updateLocationHandler(
   // Persist ETA on the order if it was calculated.
   if (eta !== undefined) {
     saveOrder({ ...order, eta, updatedAt: new Date() });
+
+    // Notify the requester when the driver is arriving within 15 minutes.
+    if (eta <= 15) {
+      const materialRequest = findRequestById(order.requestId);
+      if (materialRequest) {
+        pushNotification({
+          userId: materialRequest.requesterId,
+          event: 'driver_arriving',
+          title: 'Motorista chegando',
+          body: `O motorista chegará em aproximadamente ${eta} minuto(s) com seu pedido ${materialRequest.protocol}.`,
+          referenceId: materialRequest.id,
+        });
+      }
+    }
   }
 
   emitDriverLocation({ orderId: id, driverId: user.userId, lat: body.lat, lng: body.lng, eta });
@@ -345,6 +369,15 @@ export function deliverOrderHandler(req: AuthenticatedRequest, res: Response): v
     });
 
     emitRequestUpdated(updatedRequest);
+
+    // Notify the requester that delivery is confirmed.
+    pushNotification({
+      userId: materialRequest.requesterId,
+      event: 'delivery_confirmed',
+      title: 'Entrega confirmada',
+      body: `Seu pedido ${materialRequest.protocol} foi entregue com sucesso.`,
+      referenceId: materialRequest.id,
+    });
   }
 
   emitDeliveryConfirmed({ orderId: id, requestId: order.requestId });

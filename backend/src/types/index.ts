@@ -264,3 +264,41 @@ export interface DeliverBody {
   signatureBase64: string;
   photoBase64?: string;
 }
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export type NotificationEvent =
+  | 'request_approved'
+  | 'request_cancelled'
+  | 'order_dispatched'
+  | 'driver_arriving'
+  | 'delivery_confirmed'
+  | 'stock_below_minimum';
+
+export interface Notification {
+  id: string;
+  userId: string;
+  event: NotificationEvent;
+  title: string;
+  body: string;
+  /** Optional reference ID (requestId, orderId, productId, …). */
+  referenceId?: string;
+  read: boolean;
+  createdAt: Date;
+}
+
+// ─── Messages ────────────────────────────────────────────────────────────────
+
+export interface Message {
+  id: string;
+  requestId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: UserRole;
+  text: string;
+  createdAt: Date;
+}
+
+export interface SendMessageBody {
+  text: string;
+}

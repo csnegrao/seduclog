@@ -9,6 +9,7 @@ import { createOrder, findOrderById, saveOrder } from '../models/delivery.model'
 import { logMovement } from '../models/stockMovement.model';
 import { createSession, findSessionById, saveSession } from '../models/inventory.model';
 import { emitRequestUpdated } from '../utils/socket';
+import { pushNotification } from '../utils/notifications';
 import {
   DeliveryOrder,
   PicklistItem,
@@ -219,6 +220,21 @@ export function createStockMovementHandler(req: AuthenticatedRequest, res: Respo
   };
 
   const logged = logMovement(movement);
+
+  // Notify all warehouse operators if product is now at or below minimum.
+  const productAfter = findProductById(body.productId);
+  if (productAfter && productAfter.stock <= productAfter.minStock) {
+    const warehouseOps = findUsersByRole('warehouse_operator');
+    for (const op of warehouseOps) {
+      pushNotification({
+        userId: op.id,
+        event: 'stock_below_minimum',
+        title: 'Estoque crítico',
+        body: `O produto "${productAfter.name}" atingiu o nível mínimo (${productAfter.stock}/${productAfter.minStock}).`,
+        referenceId: productAfter.id,
+      });
+    }
+  }
 
   res.status(201).json({ movement: logged });
 }

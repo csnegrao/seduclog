@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { MaterialRequest } from '../types';
+import { MaterialRequest, Notification, Message } from '../types';
 
 /**
  * Module-level Socket.io server instance.
@@ -16,10 +16,22 @@ export function deliveryRoom(orderId: string): string {
   return `delivery:${orderId}`;
 }
 
+/** Returns the private room name for a user's notifications. */
+export function notificationRoom(userId: string): string {
+  return `notifications:${userId}`;
+}
+
+/** Returns the room name for a request message thread. */
+export function messageRoom(requestId: string): string {
+  return `messages:${requestId}`;
+}
+
 /**
  * Registers Socket.io event listeners for a newly connected client.
  * Drivers call "join:delivery" to subscribe to a per-order room so that
  * location updates and status changes are scoped to interested parties.
+ * Authenticated clients call "join:notifications" with their userId.
+ * Participants call "join:messages" with a requestId.
  */
 export function registerSocketHandlers(socket: Socket): void {
   socket.on('join:delivery', (orderId: string) => {
@@ -31,6 +43,24 @@ export function registerSocketHandlers(socket: Socket): void {
   socket.on('leave:delivery', (orderId: string) => {
     if (typeof orderId === 'string' && orderId) {
       void socket.leave(deliveryRoom(orderId));
+    }
+  });
+
+  socket.on('join:notifications', (userId: string) => {
+    if (typeof userId === 'string' && userId) {
+      void socket.join(notificationRoom(userId));
+    }
+  });
+
+  socket.on('join:messages', (requestId: string) => {
+    if (typeof requestId === 'string' && requestId) {
+      void socket.join(messageRoom(requestId));
+    }
+  });
+
+  socket.on('leave:messages', (requestId: string) => {
+    if (typeof requestId === 'string' && requestId) {
+      void socket.leave(messageRoom(requestId));
     }
   });
 }
@@ -63,5 +93,19 @@ export function emitDriverLocation(payload: {
 export function emitDeliveryConfirmed(payload: { orderId: string; requestId: string }): void {
   if (io) {
     io.to(deliveryRoom(payload.orderId)).emit('delivery:confirmed', payload);
+  }
+}
+
+/** Emits a "notification:new" event to the target user's notification room. */
+export function emitNotification(notification: Notification): void {
+  if (io) {
+    io.to(notificationRoom(notification.userId)).emit('notification:new', notification);
+  }
+}
+
+/** Emits a "message:new" event to all participants in the request thread room. */
+export function emitMessage(message: Message): void {
+  if (io) {
+    io.to(messageRoom(message.requestId)).emit('message:new', message);
   }
 }

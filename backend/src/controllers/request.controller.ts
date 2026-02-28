@@ -18,6 +18,7 @@ import { findUserById } from '../models/user.model';
 import { findOrderByRequestId } from '../models/delivery.model';
 import { findLatestUpdate } from '../models/routeUpdate.model';
 import { emitRequestUpdated } from '../utils/socket';
+import { pushNotification } from '../utils/notifications';
 import {
   MaterialRequest,
   RequestItem,
@@ -264,6 +265,15 @@ export function approveRequestHandler(req: AuthenticatedRequest, res: Response):
   const saved = saveRequest(updated);
   emitRequestUpdated(saved);
 
+  // Notify the requester that their request was approved.
+  pushNotification({
+    userId: request.requesterId,
+    event: 'request_approved',
+    title: 'Pedido aprovado',
+    body: `Seu pedido ${request.protocol} foi aprovado e está sendo separado.`,
+    referenceId: request.id,
+  });
+
   res.status(200).json({ request: saved });
 }
 
@@ -316,6 +326,17 @@ export function cancelRequestHandler(req: AuthenticatedRequest, res: Response): 
 
   const saved = saveRequest(updated);
   emitRequestUpdated(saved);
+
+  // Notify the requester if cancelled by someone else (warehouse/admin).
+  if (user.userId !== request.requesterId) {
+    pushNotification({
+      userId: request.requesterId,
+      event: 'request_cancelled',
+      title: 'Pedido cancelado',
+      body: `Seu pedido ${request.protocol} foi cancelado.`,
+      referenceId: request.id,
+    });
+  }
 
   res.status(200).json({ request: saved });
 }
