@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { authHeaders } from './useRequests';
 import { Message } from '../types/notifications.types';
-import { useSocket } from './useSocket';
+import { getSocket } from '../utils/socket';
 
 const API_BASE = process.env.REACT_APP_API_BASE ?? 'http://localhost:3001';
 
@@ -30,11 +30,11 @@ export function useMessages(requestId: string | null): UseMessagesResult {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const socket = useSocket();
-
   // Join/leave the message thread room when requestId changes.
   useEffect(() => {
-    if (!socket || !requestId) return;
+    if (!requestId) return;
+
+    const socket = getSocket();
 
     const joinRoom = () => socket.emit('join:messages', requestId);
 
@@ -45,11 +45,11 @@ export function useMessages(requestId: string | null): UseMessagesResult {
       socket.off('connect', joinRoom);
       socket.emit('leave:messages', requestId);
     };
-  }, [socket, requestId]);
+  }, [requestId]);
 
   // Real-time new messages.
   useEffect(() => {
-    if (!socket) return;
+    const socket = getSocket();
 
     const handleNew = (msg: Message) => {
       // Only add if it belongs to the current thread.
@@ -66,7 +66,7 @@ export function useMessages(requestId: string | null): UseMessagesResult {
     return () => {
       socket.off('message:new', handleNew);
     };
-  }, [socket, requestId]);
+  }, [requestId]);
 
   const fetchMessages = useCallback(async (reqId: string): Promise<void> => {
     setLoading(true);

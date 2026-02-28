@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MaterialRequest, RequestStatus } from '../../types/request.types';
 import { useRequests } from '../../hooks/useRequests';
 import { useSocket } from '../../hooks/useSocket';
 import { useAuth } from '../../contexts/AuthContext';
+import { MessageThread } from '../messages/MessageThread';
 
 const STATUS_LABELS: Record<RequestStatus, string> = {
   pending: 'Pendente',
@@ -22,14 +23,6 @@ const STATUS_COLORS: Record<RequestStatus, string> = {
   cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
-interface Message {
-  id: string;
-  authorId: string;
-  authorName: string;
-  text: string;
-  sentAt: string;
-}
-
 interface Props {
   requestId: string;
   onBack?: () => void;
@@ -43,7 +36,7 @@ interface Props {
  *  - Item table with requested / approved quantities
  *  - Status history timeline
  *  - Driver location map placeholder (replace with real Google Maps integration)
- *  - In-thread message panel
+ *  - In-thread message panel (backed by real API + Socket.io)
  *
  * Receives real-time updates via Socket.io.
  */
@@ -55,11 +48,6 @@ export function RequestDetail({ requestId, onBack }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-
-  // Simple in-memory message thread (replace with a persisted API in production).
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [draft, setDraft] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -83,11 +71,6 @@ export function RequestDetail({ requestId, onBack }: Props) {
     if (updated.id === requestId) setReq(updated);
   });
 
-  // Scroll messages to bottom on new message.
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
   const handleApprove = async () => {
     if (!req) return;
     setActionError(null);
@@ -108,21 +91,6 @@ export function RequestDetail({ requestId, onBack }: Props) {
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Action failed');
     }
-  };
-
-  const sendMessage = () => {
-    if (!draft.trim() || !user) return;
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        authorId: user.id,
-        authorName: user.name,
-        text: draft.trim(),
-        sentAt: new Date().toISOString(),
-      },
-    ]);
-    setDraft('');
   };
 
   const formatDate = (iso: string) =>
@@ -301,58 +269,16 @@ export function RequestDetail({ requestId, onBack }: Props) {
         </ol>
       </div>
 
-      {/* Message thread */}
-      <div className="rounded-xl border border-gray-200 bg-white">
-        <p className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide border-b">
-          Mensagens
-        </p>
-        <div className="flex flex-col gap-2 p-4 max-h-64 overflow-y-auto">
-          {messages.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-4">
-              Nenhuma mensagem ainda.
-            </p>
-          )}
-          {messages.map((msg) => {
-            const isMe = msg.authorId === user?.id;
-            return (
-              <div
-                key={msg.id}
-                className={`flex flex-col max-w-[80%] ${isMe ? 'self-end items-end' : 'self-start items-start'}`}
-              >
-                <span className="text-xs text-gray-400 mb-0.5">{msg.authorName}</span>
-                <div
-                  className={`rounded-2xl px-3 py-2 text-sm ${
-                    isMe ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {msg.text}
-                </div>
-                <span className="text-xs text-gray-400 mt-0.5">
-                  {formatDate(msg.sentAt)}
-                </span>
-              </div>
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </div>
-        <div className="border-t border-gray-100 p-3 flex gap-2">
-          <input
-            type="text"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-            placeholder="Digite uma mensagem..."
-            className="flex-1 rounded-full border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      {/* Message thread — backed by real API + Socket.io */}
+      {user && (
+        <div className="rounded-xl border border-gray-200 overflow-hidden" style={{ height: 420 }}>
+          <MessageThread
+            requestId={requestId}
+            currentUserId={user.id}
+            currentUserRole={user.role}
           />
-          <button
-            onClick={sendMessage}
-            disabled={!draft.trim()}
-            className="rounded-full bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            Enviar
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { MaterialRequest, RequestStatus } from '../../types/request.types';
 import { useRequests } from '../../hooks/useRequests';
 import { useSocket } from '../../hooks/useSocket';
+import { getSocket } from '../../utils/socket';
+import { Message } from '../../types/notifications.types';
 
 const STATUS_TABS: Array<{ label: string; value: RequestStatus | 'all' }> = [
   { label: 'Todos', value: 'all' },
@@ -32,15 +34,19 @@ const STATUS_COLORS: Record<RequestStatus, string> = {
 
 interface Props {
   onSelectRequest?: (id: string) => void;
+  currentUserId?: string;
 }
 
 /**
  * Request list screen with status filter tabs.
  * Listens for real-time updates via Socket.io.
+ * Shows an unread message indicator badge on requests with new messages.
  */
-export function RequestList({ onSelectRequest }: Props) {
+export function RequestList({ onSelectRequest, currentUserId }: Props) {
   const { requests, loading, error, fetchRequests, patchRequest } = useRequests();
   const [activeTab, setActiveTab] = useState<RequestStatus | 'all'>('all');
+  // Map of requestId → unread message count
+  const [unreadMessages, setUnreadMessages] = useState<Record<string, number>>({});
 
   // Load on mount and when the active tab changes.
   useEffect(() => {
@@ -48,8 +54,6 @@ export function RequestList({ onSelectRequest }: Props) {
   }, [activeTab, fetchRequests]);
 
   // Keep the list in sync with real-time status changes.
-  // Update the changed item in-place; if it no longer matches the active tab,
-  // remove it from the visible list by triggering a lightweight re-fetch.
   useSocket((updated) => {
     const matchesTab = activeTab === 'all' || updated.status === activeTab;
     if (matchesTab) {
@@ -58,6 +62,35 @@ export function RequestList({ onSelectRequest }: Props) {
       void fetchRequests(activeTab === 'all' ? {} : { status: activeTab });
     }
   });
+
+  // Track incoming messages as unread indicators.
+  useEffect(() => {
+    const socket = getSocket();
+
+    const handleNewMessage = (msg: Message) => {
+      // Ignore messages sent by the current user.
+      if (msg.senderId === currentUserId) return;
+      setUnreadMessages((prev) => ({
+        ...prev,
+        [msg.requestId]: (prev[msg.requestId] ?? 0) + 1,
+      }));
+    };
+
+    socket.on('message:new', handleNewMessage);
+    return () => {
+      socket.off('message:new', handleNewMessage);
+    };
+  }, [currentUserId]);
+
+  // Clear unread indicator when the user opens a request.
+  const handleSelectRequest = (id: string) => {
+    setUnreadMessages((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    onSelectRequest?.(id);
+  };
 
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleDateString('pt-BR', {
@@ -105,29 +138,40 @@ export function RequestList({ onSelectRequest }: Props) {
 
         {!loading && !error && requests.length > 0 && (
           <ul className="flex flex-col gap-3">
-            {requests.map((req) => (
-              <li key={req.id}>
-                <button
-                  className="w-full text-left rounded-xl bg-white border border-gray-200 p-4 shadow-sm hover:border-blue-300 transition-colors"
-                  onClick={() => onSelectRequest?.(req.id)}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="font-mono text-xs text-gray-500">{req.protocol}</span>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[req.status]}`}
-                    >
-                      {STATUS_LABELS[req.status]}
-                    </span>
-                  </div>
-                  <p className="font-medium text-gray-900 text-sm mb-1">{req.school}</p>
-                  <p className="text-xs text-gray-500 line-clamp-2">{req.justification}</p>
-                  <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
-                    <span>{req.items.length} item(s)</span>
-                    <span>{formatDate(req.createdAt)}</span>
-                  </div>
-                </button>
-              </li>
-            ))}
+            {requests.map((req) => {
+              const msgCount = unreadMessages[req.id] ?? 0;
+              return (
+                <li key={req.id}>
+                  <button
+                    className="w-full text-left rounded-xl bg-white border border-gray-200 p-4 shadow-sm hover:border-blue-300 transition-colors"
+                    onClick={() => handleSelectRequest(req.id)}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="font-mono text-xs text-gray-500">{req.protocol}</span>
+                      <div className="flex items-center gap-2">
+                        {/* Unread message indicator */}
+                        {msgCount > 0 && (
+                          <span className="inline-flex items-center justify-center rounded-full bg-blue-500 text-white text-[10px] font-bold h-4 min-w-[1rem] px-1">
+                            {msgCount > 9 ? '9+' : msgCount}
+                          </span>
+                        )}
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[req.status]}`}
+                        >
+                          {STATUS_LABELS[req.status]}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="font-medium text-gray-900 text-sm mb-1">{req.school}</p>
+                    <p className="text-xs text-gray-500 line-clamp-2">{req.justification}</p>
+                    <div className="mt-2 flex items-center justify-between text-xs text-gray-400">
+                      <span>{req.items.length} item(s)</span>
+                      <span>{formatDate(req.createdAt)}</span>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

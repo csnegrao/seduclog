@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { authHeaders } from './useRequests';
 import { AppNotification } from '../types/notifications.types';
-import { useSocket } from './useSocket';
+import { getSocket } from '../utils/socket';
 
 const API_BASE = process.env.REACT_APP_API_BASE ?? 'http://localhost:3001';
 
@@ -32,11 +32,11 @@ export function useNotifications(userId: string | null): UseNotificationsResult 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const socket = useSocket();
-
   // Join the user's notification room when connected.
   useEffect(() => {
-    if (!socket || !userId) return;
+    if (!userId) return;
+
+    const socket = getSocket();
 
     const handleConnect = () => {
       socket.emit('join:notifications', userId);
@@ -50,11 +50,11 @@ export function useNotifications(userId: string | null): UseNotificationsResult 
     return () => {
       socket.off('connect', handleConnect);
     };
-  }, [socket, userId]);
+  }, [userId]);
 
   // Listen for incoming notifications in real-time.
   useEffect(() => {
-    if (!socket) return;
+    const socket = getSocket();
 
     const handleNew = (notif: AppNotification) => {
       setNotifications((prev) => [notif, ...prev]);
@@ -65,7 +65,7 @@ export function useNotifications(userId: string | null): UseNotificationsResult 
     return () => {
       socket.off('notification:new', handleNew);
     };
-  }, [socket]);
+  }, []);
 
   const fetchNotifications = useCallback(async (): Promise<void> => {
     setLoading(true);
