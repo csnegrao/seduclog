@@ -2,6 +2,12 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/authenticate';
 import { authorize } from '../middleware/authorize';
+import { validate } from '../middleware/validate';
+import {
+  createDeliveryOrderSchema,
+  stockMovementSchema,
+  reconcileInventorySchema,
+} from '../schemas/warehouse.schemas';
 import {
   getQueueHandler,
   createDeliveryOrderHandler,
@@ -34,7 +40,7 @@ const warehouseAuth = authorize('warehouse_operator', 'admin');
 router.get('/queue', warehouseAuth, getQueueHandler);
 
 /** POST /api/warehouse/orders — create delivery order */
-router.post('/orders', warehouseAuth, createDeliveryOrderHandler);
+router.post('/orders', warehouseAuth, validate(createDeliveryOrderSchema), createDeliveryOrderHandler);
 
 /** PATCH /api/warehouse/orders/:id/start-picking — mark order as picking */
 router.patch('/orders/:id/start-picking', warehouseAuth, startPickingHandler);
@@ -46,13 +52,18 @@ router.get('/stock', warehouseAuth, getStockHandler);
 router.get('/stock/alerts', warehouseAuth, getStockAlertsHandler);
 
 /** POST /api/warehouse/stock/movement — register stock entry */
-router.post('/stock/movement', warehouseAuth, createStockMovementHandler);
+router.post('/stock/movement', warehouseAuth, validate(stockMovementSchema), createStockMovementHandler);
 
 /** POST /api/warehouse/inventory — start inventory session */
 router.post('/inventory', warehouseAuth, startInventoryHandler);
 
 /** PATCH /api/warehouse/inventory/:id/reconcile — submit physical counts */
-router.patch('/inventory/:id/reconcile', warehouseAuth, reconcileInventoryHandler);
+router.patch(
+  '/inventory/:id/reconcile',
+  warehouseAuth,
+  validate(reconcileInventorySchema),
+  reconcileInventoryHandler,
+);
 
 /** GET /api/warehouse/drivers — available drivers and vehicles */
 router.get('/drivers', warehouseAuth, getDriversAndVehiclesHandler);

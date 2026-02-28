@@ -2,9 +2,9 @@ import request from 'supertest';
 import app from '../app';
 
 describe('POST /api/auth/login', () => {
-  it('returns 400 when body is empty', async () => {
+  it('returns 422 when body is empty', async () => {
     const res = await request(app).post('/api/auth/login').send({});
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('returns 401 for unknown email', async () => {
@@ -37,9 +37,9 @@ describe('POST /api/auth/login', () => {
 });
 
 describe('POST /api/auth/refresh', () => {
-  it('returns 400 when refreshToken is missing', async () => {
+  it('returns 422 when refreshToken is missing', async () => {
     const res = await request(app).post('/api/auth/refresh').send({});
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('returns 401 for an invalid refresh token', async () => {

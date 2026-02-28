@@ -2,6 +2,8 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/authenticate';
 import { authorize } from '../middleware/authorize';
+import { validate } from '../middleware/validate';
+import { sendMessageSchema } from '../schemas/message.schemas';
 import { getThreadHandler, sendMessageHandler } from '../controllers/messages.controller';
 
 const limiter = rateLimit({
@@ -27,6 +29,7 @@ router.get(
 router.post(
   '/:requestId',
   authorize('requester', 'warehouse_operator', 'manager', 'admin'),
+  validate(sendMessageSchema),
   sendMessageHandler,
 );
 

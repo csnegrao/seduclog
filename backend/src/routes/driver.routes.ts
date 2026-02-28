@@ -2,6 +2,13 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/authenticate';
 import { authorize } from '../middleware/authorize';
+import { validate } from '../middleware/validate';
+import {
+  pickupSchema,
+  locationSchema,
+  occurrenceSchema,
+  deliverSchema,
+} from '../schemas/driver.schemas';
 import {
   listDriverOrdersHandler,
   pickupOrderHandler,
@@ -30,15 +37,15 @@ const driverAuth = authorize('driver', 'admin');
 router.get('/orders', driverAuth, listDriverOrdersHandler);
 
 /** PATCH /api/driver/orders/:id/pickup — confirm pickup from warehouse */
-router.patch('/orders/:id/pickup', driverAuth, pickupOrderHandler);
+router.patch('/orders/:id/pickup', driverAuth, validate(pickupSchema), pickupOrderHandler);
 
 /** POST /api/driver/orders/:id/location — update driver GPS position */
-router.post('/orders/:id/location', driverAuth, updateLocationHandler);
+router.post('/orders/:id/location', driverAuth, validate(locationSchema), updateLocationHandler);
 
 /** POST /api/driver/orders/:id/occurrence — register a route occurrence */
-router.post('/orders/:id/occurrence', driverAuth, reportOccurrenceHandler);
+router.post('/orders/:id/occurrence', driverAuth, validate(occurrenceSchema), reportOccurrenceHandler);
 
 /** POST /api/driver/orders/:id/deliver — final delivery confirmation */
-router.post('/orders/:id/deliver', driverAuth, deliverOrderHandler);
+router.post('/orders/:id/deliver', driverAuth, validate(deliverSchema), deliverOrderHandler);
 
 export default router;

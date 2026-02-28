@@ -111,20 +111,20 @@ describe('POST /api/messages/:requestId', () => {
     requestId = await createRequest(requesterToken, 'p6');
   });
 
-  it('returns 400 when text is missing', async () => {
+  it('returns 422 when text is missing', async () => {
     const res = await request(app)
       .post(`/api/messages/${requestId}`)
       .set('Authorization', `Bearer ${requesterToken}`)
       .send({});
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
-  it('returns 400 when text is empty string', async () => {
+  it('returns 422 when text is empty string', async () => {
     const res = await request(app)
       .post(`/api/messages/${requestId}`)
       .set('Authorization', `Bearer ${requesterToken}`)
       .send({ text: '   ' });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('requester can send a message', async () => {

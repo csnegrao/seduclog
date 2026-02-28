@@ -150,12 +150,12 @@ describe('POST /api/driver/orders/:id/location', () => {
       .send({});
   });
 
-  it('returns 400 when lat/lng are missing', async () => {
+  it('returns 422 when lat/lng are missing', async () => {
     const res = await request(app)
       .post(`/api/driver/orders/${orderId}/location`)
       .set('Authorization', `Bearer ${driverToken}`)
       .send({});
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('records location update', async () => {
@@ -188,12 +188,12 @@ describe('POST /api/driver/orders/:id/occurrence', () => {
     orderId = order.id;
   });
 
-  it('returns 400 when description is missing', async () => {
+  it('returns 422 when description is missing', async () => {
     const res = await request(app)
       .post(`/api/driver/orders/${orderId}/occurrence`)
       .set('Authorization', `Bearer ${driverToken}`)
       .send({});
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('registers occurrence', async () => {
@@ -233,20 +233,20 @@ describe('POST /api/driver/orders/:id/deliver', () => {
       .send({});
   });
 
-  it('returns 400 when signatureBase64 is missing', async () => {
+  it('returns 422 when signatureBase64 is missing', async () => {
     const res = await request(app)
       .post(`/api/driver/orders/${orderId}/deliver`)
       .set('Authorization', `Bearer ${driverToken}`)
       .send({ items: [{ itemId: picklistItemId, status: 'delivered', deliveredQuantity: 3 }] });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
-  it('returns 400 when items checklist is missing', async () => {
+  it('returns 422 when items checklist is missing', async () => {
     const res = await request(app)
       .post(`/api/driver/orders/${orderId}/deliver`)
       .set('Authorization', `Bearer ${driverToken}`)
       .send({ signatureBase64: 'abc', items: [] });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('confirms delivery, updates statuses, restores partial stock', async () => {

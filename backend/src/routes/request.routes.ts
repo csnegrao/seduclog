@@ -2,6 +2,12 @@ import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { authenticate } from '../middleware/authenticate';
 import { authorize } from '../middleware/authorize';
+import { validate } from '../middleware/validate';
+import {
+  createRequestSchema,
+  approveRequestSchema,
+  cancelRequestSchema,
+} from '../schemas/request.schemas';
 import {
   createRequestHandler,
   listRequestsHandler,
@@ -25,7 +31,7 @@ const router = Router();
 router.use(requestLimiter, authenticate);
 
 /** POST /api/requests — create new request (REQUESTER only) */
-router.post('/', authorize('requester'), createRequestHandler);
+router.post('/', authorize('requester'), validate(createRequestSchema), createRequestHandler);
 
 /** GET /api/requests — list with optional filters */
 router.get('/', listRequestsHandler);
@@ -37,9 +43,14 @@ router.get('/:id', getRequestHandler);
 router.get('/:id/tracking', getTrackingHandler);
 
 /** PATCH /api/requests/:id/approve — WAREHOUSE_OPERATOR or admin */
-router.patch('/:id/approve', authorize('warehouse_operator', 'admin'), approveRequestHandler);
+router.patch(
+  '/:id/approve',
+  authorize('warehouse_operator', 'admin'),
+  validate(approveRequestSchema),
+  approveRequestHandler,
+);
 
 /** PATCH /api/requests/:id/cancel — requester (own), warehouse_operator, or admin */
-router.patch('/:id/cancel', cancelRequestHandler);
+router.patch('/:id/cancel', validate(cancelRequestSchema), cancelRequestHandler);
 
 export default router;

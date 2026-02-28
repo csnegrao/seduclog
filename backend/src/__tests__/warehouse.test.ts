@@ -100,12 +100,12 @@ describe('POST /api/warehouse/orders', () => {
     requesterToken = await getToken('requester@seduclog.com', 'requester123');
   });
 
-  it('returns 400 when required fields are missing', async () => {
+  it('returns 422 when required fields are missing', async () => {
     const res = await request(app)
       .post('/api/warehouse/orders')
       .set('Authorization', `Bearer ${warehouseToken}`)
       .send({ requestId: 'x' });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('returns 404 for unknown requestId', async () => {
@@ -252,12 +252,12 @@ describe('POST /api/warehouse/stock/movement', () => {
     warehouseToken = await getToken('warehouse@seduclog.com', 'warehouse123');
   });
 
-  it('returns 400 when required fields are missing', async () => {
+  it('returns 422 when required fields are missing', async () => {
     const res = await request(app)
       .post('/api/warehouse/stock/movement')
       .set('Authorization', `Bearer ${warehouseToken}`)
       .send({ productId: 'p1' });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('returns 404 for unknown product', async () => {
@@ -346,12 +346,12 @@ describe('PATCH /api/warehouse/inventory/:id/reconcile', () => {
     sessionId = (res.body as { inventory: InventorySession }).inventory.id;
   });
 
-  it('returns 400 when counts are missing', async () => {
+  it('returns 422 when counts are missing', async () => {
     const res = await request(app)
       .patch(`/api/warehouse/inventory/${sessionId}/reconcile`)
       .set('Authorization', `Bearer ${warehouseToken}`)
       .send({});
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('returns 404 for unknown session', async () => {

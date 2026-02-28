@@ -36,12 +36,12 @@ describe('POST /api/requests', () => {
     expect(res.status).toBe(403);
   });
 
-  it('returns 400 when required fields are missing', async () => {
+  it('returns 422 when required fields are missing', async () => {
     const res = await request(app)
       .post('/api/requests')
       .set('Authorization', `Bearer ${requesterToken}`)
       .send({ school: 'School A' });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
   });
 
   it('returns 400 for unknown product', async () => {

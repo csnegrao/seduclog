@@ -1,4 +1,5 @@
 import express from 'express';
+import helmet from 'helmet';
 import authRouter from './routes/auth.routes';
 import requestRouter from './routes/request.routes';
 import warehouseRouter from './routes/warehouse.routes';
@@ -9,7 +10,10 @@ import messagesRouter from './routes/messages.routes';
 
 const app = express();
 
-app.use(express.json());
+// Security headers
+app.use(helmet());
+
+app.use(express.json({ limit: '2mb' }));
 
 app.use('/api/auth', authRouter);
 app.use('/api/requests', requestRouter);
