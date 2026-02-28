@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 
 const SALT_ROUNDS = 12;
 
@@ -67,4 +67,8 @@ export function findUserByEmail(email: string): User | undefined {
 
 export function findUserById(id: string): User | undefined {
   return users.find((u) => u.id === id);
+}
+
+export function findUsersByRole(role: UserRole): User[] {
+  return users.filter((u) => u.role === role);
 }
