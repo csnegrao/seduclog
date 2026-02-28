@@ -63,6 +63,62 @@ services:
         condition: service_healthy
     ports:
       - '80:80'
+services:
+  litespeed:
+    image: litespeedtech/openlitespeed:latest
+    container_name: seduclog_litespeed
+    ports:
+      - "80:80"
+      - "443:443"
+      - "7080:7080"   # LiteSpeed WebAdmin console
+    volumes:
+      - ./:/var/www/vhosts/localhost/html
+      - ./docker/litespeed/vhconf.conf:/usr/local/lsws/conf/vhosts/localhost/vhconf.conf:ro
+    environment:
+      - TZ=America/Manaus
+    depends_on:
+      - mariadb
+    restart: unless-stopped
+
+  mariadb:
+    image: mariadb:11
+    container_name: seduclog_mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootpassword}
+      MARIADB_DATABASE: ${DB_DATABASE:-seduclog}
+      MARIADB_USER: ${DB_USERNAME:-seduclog_user}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-your_password_here}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./docker/mariadb/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+
+volumes:
+  mariadb_data:
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: seduclog_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: seduclog
+      POSTGRES_PASSWORD: seduclog_pass
+      POSTGRES_DB: seduclog_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: seduclog_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
 
 volumes:
   postgres_data:

@@ -22,6 +22,9 @@ export interface UserPublic {
   role: UserRole;
   createdAt: Date;
 }
+import { Role, RequestStatus, OrderStatus, DeliveryStatus, MovementType, Priority } from '@prisma/client';
+
+export { Role, RequestStatus, OrderStatus, DeliveryStatus, MovementType, Priority };
 
 export interface JwtPayload {
   userId: string;
@@ -301,4 +304,17 @@ export interface Message {
 
 export interface SendMessageBody {
   text: string;
+  role: Role;
+}
+
+export interface AuthRequest extends Express.Request {
+  user?: JwtPayload;
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: JwtPayload;
+    }
+  }
 }

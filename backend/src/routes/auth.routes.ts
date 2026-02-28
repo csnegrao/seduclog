@@ -23,5 +23,13 @@ router.post('/refresh', authLimiter, validate(refreshSchema), refresh);
 
 /** GET /api/auth/me — requires valid access token */
 router.get('/me', authLimiter, authenticate, me);
+import { login, logout, me } from '../controllers/auth.controller';
+import { authenticate } from '../middleware/auth';
+
+const router = Router();
+
+router.post('/login', login);
+router.post('/logout', authenticate, logout);
+router.get('/me', authenticate, me);
 
 export default router;
