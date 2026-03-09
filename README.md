@@ -25,6 +25,147 @@ Sistema web completo para gerenciamento de almoxarifado da Secretaria de Educaç
 | `REQUESTER` | Solicitação e acompanhamento de pedidos |
 | `MANAGER` | Dashboard e relatórios (somente leitura) |
 
+## Implantação em Produção
+
+### Pré-requisitos do Servidor
+
+- Sistema operacional: Ubuntu 22.04 LTS (ou equivalente)
+- [Docker Engine 24+](https://docs.docker.com/engine/install/) e Docker Compose v2 (`docker compose`)
+- `git`
+- Mínimo recomendado: 2 GB RAM · 20 GB de disco
+- Portas `80`, `443` e `3306` liberadas no firewall (443 somente se usar HTTPS)
+
+### 1. Clonar o Repositório
+
+```bash
+git clone https://github.com/csnegrao/seduclog.git
+cd seduclog
+```
+
+### 2. Configurar Variáveis de Ambiente
+
+```bash
+cp .env.example .env
+```
+
+Gere senhas seguras antes de editar o arquivo:
+
+```bash
+echo "DB_PASSWORD=$(openssl rand -hex 16)"
+echo "DB_ROOT_PASSWORD=$(openssl rand -hex 16)"
+echo "JWT_SECRET=$(openssl rand -hex 32)"
+```
+
+Edite `.env` substituindo **todos** os valores de exemplo pelas strings geradas:
+
+```env
+# Application
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://seu-dominio.com       # URL pública da aplicação
+
+# MariaDB / MySQL Database
+DB_HOST=mariadb
+DB_PORT=3306
+DB_DATABASE=seduclog
+DB_USERNAME=seduclog_user
+DB_PASSWORD=cole_aqui_o_valor_gerado
+DB_ROOT_PASSWORD=cole_aqui_o_valor_gerado
+
+# Backend API
+JWT_SECRET=cole_aqui_o_valor_gerado
+JWT_EXPIRES_IN=7d
+NODE_ENV=production
+CORS_ORIGIN=https://seu-dominio.com   # mesmo valor de APP_URL
+```
+
+> ⚠️ **Nunca** faça commit do arquivo `.env` em repositórios públicos.
+
+### 3. Build do Frontend
+
+O React precisa ser compilado para arquivos estáticos antes da implantação:
+
+```bash
+cd frontend
+npm ci
+# Opcional: defina a chave do Google Maps antes do build
+# export VITE_GOOGLE_MAPS_KEY=sua_chave_aqui
+npm run build
+cd ..
+```
+
+Os arquivos gerados ficam em `frontend/dist/` e serão servidos pelo LiteSpeed.
+
+### 4. Subir a Stack em Produção
+
+Use o override de produção que ajusta o backend para `NODE_ENV=production`,
+compila o TypeScript e executa as migrações automaticamente:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+Aguarde os serviços iniciarem e verifique os logs:
+
+```bash
+docker compose logs -f backend   # aguarde "Server is running on port 3001"
+docker compose logs -f litespeed
+```
+
+### 5. Verificar a Implantação
+
+| Serviço | URL padrão |
+|---------|-----------|
+| Aplicação | `http://seu-dominio.com` |
+| API | `http://seu-dominio.com/api/auth/login` |
+| LiteSpeed WebAdmin | `http://seu-servidor:7080` |
+
+Faça login com as credenciais iniciais da tabela [Credenciais de Teste](#credenciais-de-teste-após-seed) e **altere as senhas imediatamente** após o primeiro acesso.
+
+### 6. Popular o Banco (seed inicial — opcional)
+
+Execute o seed apenas se quiser usuários e dados de demonstração:
+
+```bash
+docker compose exec backend npx ts-node prisma/seed.ts
+```
+
+### Configuração de HTTPS (Recomendado)
+
+Para habilitar HTTPS com certificado gratuito via Let's Encrypt, acesse o painel LiteSpeed WebAdmin (`http://seu-servidor:7080`, credenciais padrão: `admin` / `123456`) e siga:
+
+> ⚠️ **Altere imediatamente** a senha do WebAdmin após o primeiro acesso em **Preferences → Change Password**.
+
+1. **Listeners** → Adicione um listener na porta 443 com SSL habilitado
+2. **Virtual Hosts** → Ative o certificado Let's Encrypt pelo assistente integrado
+3. Adicione regra de redirecionamento HTTP → HTTPS no listener da porta 80
+
+Mais detalhes: [Documentação LiteSpeed — Let's Encrypt](https://docs.litespeedtech.com/lsws/config/ssl/).
+
+### Comandos Úteis de Manutenção
+
+```bash
+# Ver status dos containers
+docker compose ps
+
+# Reiniciar apenas o backend
+docker compose restart backend
+
+# Executar migrações manualmente
+docker compose exec backend npx prisma migrate deploy
+
+# Fazer backup do banco de dados
+docker compose exec mariadb sh -c \
+  "mysqldump -u root -p\$MARIADB_ROOT_PASSWORD seduclog" > backup_$(date +%F).sql
+
+# Atualizar a aplicação
+git pull
+cd frontend && npm ci && npm run build && cd ..
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build backend
+```
+
+---
+
 ## Início Rápido (desenvolvimento local, sem Docker)
 
 ### 1. Pré-requisitos
