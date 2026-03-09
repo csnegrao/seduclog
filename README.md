@@ -1,52 +1,3 @@
-# seduclog
-Applicativo de acompanhamento e gerenciamento de entregas.
-
-## Stack de produção
-
-| Componente  | Tecnologia          |
-|-------------|---------------------|
-| Web server  | LiteSpeed           |
-| Banco de dados | MariaDB          |
-| Linguagem   | PHP 8+              |
-
-## Configuração rápida (desenvolvimento local com Docker)
-
-1. Copie o arquivo de variáveis de ambiente:
-   ```bash
-   cp .env.example .env
-   ```
-2. Edite `.env` com as suas credenciais.
-
-3. Suba os containers:
-   ```bash
-   docker compose up -d
-   ```
-
-4. Acesse `http://localhost` no navegador.  
-   O painel de administração do LiteSpeed está disponível em `http://localhost:7080`.
-
-## Implantação em produção (LiteSpeed + MariaDB)
-
-1. Copie os arquivos da aplicação para o diretório raiz do virtual host configurado no LiteSpeed.
-2. Copie `.env.example` para `.env` e preencha as variáveis com os dados reais do servidor.
-3. Execute o script de inicialização do banco:
-   ```bash
-   mysql -u root -p seduclog < docker/mariadb/init.sql
-   ```
-4. Certifique-se de que o LiteSpeed está configurado para carregar `.htaccess`
-   (`autoLoadHtaccess` habilitado no virtual host).
-5. O arquivo `.htaccess` na raiz do projeto faz o roteamento para `index.php` e
-   aplica cabeçalhos de segurança.
-
-## Variáveis de ambiente
-
-| Variável       | Descrição                         | Padrão         |
-|----------------|-----------------------------------|----------------|
-| `DB_HOST`      | Host do MariaDB                   | `127.0.0.1`    |
-| `DB_PORT`      | Porta do MariaDB                  | `3306`         |
-| `DB_DATABASE`  | Nome do banco de dados            | `seduclog`     |
-| `DB_USERNAME`  | Usuário do banco                  | `seduclog_user`|
-| `DB_PASSWORD`  | Senha do banco                    | _(obrigatório)_|
 # AlmoxarifadoEdu — Sistema de Gestão de Almoxarifado SEDUC
 
 Sistema web completo para gerenciamento de almoxarifado da Secretaria de Educação (SEDUC), com controle de estoque, pedidos, separação, entregas com rastreamento e assinatura digital.
@@ -57,7 +8,7 @@ Sistema web completo para gerenciamento de almoxarifado da Secretaria de Educaç
 |--------|------------|
 | Frontend | React 18 + TypeScript + Vite + Tailwind CSS |
 | Backend | Node.js + Express + TypeScript |
-| Banco | PostgreSQL + Prisma ORM |
+| Banco | MariaDB/MySQL + Prisma ORM |
 | Real-time | Socket.io |
 | Auth | JWT + RBAC |
 | Mapas | Google Maps API |
@@ -74,23 +25,37 @@ Sistema web completo para gerenciamento de almoxarifado da Secretaria de Educaç
 | `REQUESTER` | Solicitação e acompanhamento de pedidos |
 | `MANAGER` | Dashboard e relatórios (somente leitura) |
 
-## Início Rápido
+## Início Rápido (desenvolvimento local, sem Docker)
 
 ### 1. Pré-requisitos
-- Node.js 18+
-- Docker & Docker Compose
-- npm
 
-### 2. Subir o banco de dados
-```bash
-docker-compose up -d
+- Node.js 18+
+- npm
+- MariaDB 11 (ou MySQL 8) instalado e em execução localmente
+
+### 2. Banco de dados
+
+Crie o banco de dados e o usuário no MariaDB/MySQL local:
+
+```sql
+CREATE DATABASE seduclog CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'seduclog_user'@'localhost' IDENTIFIED BY 'your_password_here';
+GRANT ALL PRIVILEGES ON seduclog.* TO 'seduclog_user'@'localhost';
+FLUSH PRIVILEGES;
 ```
 
+> **Dica:** você pode executar o script `docker/mariadb/init.sql` para criar as tabelas iniciais:
+> ```bash
+> mysql -u root -p seduclog < docker/mariadb/init.sql
+> ```
+
 ### 3. Backend
+
 ```bash
 cd backend
 cp .env.example .env
-# Edite .env com suas configurações
+# Edite .env e defina DATABASE_URL com a senha escolhida, p. ex.:
+# DATABASE_URL="mysql://seduclog_user:your_password_here@127.0.0.1:3306/seduclog"
 
 npm install
 npm run prisma:generate
@@ -99,16 +64,43 @@ npm run prisma:seed
 npm run dev
 ```
 
+O backend ficará disponível em http://localhost:3001.
+
 ### 4. Frontend
+
 ```bash
 cd frontend
-# Crie .env.local com VITE_GOOGLE_MAPS_KEY=sua_chave (opcional)
+# Opcional: crie .env.local com VITE_GOOGLE_MAPS_KEY=sua_chave
 
 npm install
 npm run dev
 ```
 
-Acesse: http://localhost:5173
+O frontend ficará disponível em http://localhost:5173
+
+---
+
+## Desenvolvimento com Docker (alternativa)
+
+Se preferir subir o banco de dados via Docker e rodar o backend/frontend localmente:
+
+```bash
+# Apenas o banco de dados
+docker compose up -d mariadb
+```
+
+Depois siga os passos 3 e 4 acima.
+
+Para subir **toda** a stack via Docker:
+
+```bash
+cp .env.example .env
+# Edite .env com suas credenciais
+docker compose up -d
+```
+
+Acesse `http://localhost` no navegador.  
+O painel de administração do LiteSpeed está disponível em `http://localhost:7080`.
 
 ## Credenciais de Teste (após seed)
 
@@ -124,10 +116,11 @@ Acesse: http://localhost:5173
 
 ### Backend (`backend/.env`)
 ```env
-DATABASE_URL="postgresql://seduclog:seduclog_pass@localhost:5432/seduclog_db"
+DATABASE_URL="mysql://seduclog_user:your_password_here@127.0.0.1:3306/seduclog"
 JWT_SECRET="seu-segredo-jwt-aqui"
 JWT_EXPIRES_IN="7d"
 PORT=3001
+NODE_ENV=development
 CORS_ORIGIN="http://localhost:5173"
 ```
 
