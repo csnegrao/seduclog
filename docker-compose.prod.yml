@@ -1,0 +1,18 @@
+# Production overrides — use together with docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Changes vs. development:
+#  - backend: builds TypeScript, runs production migrations, starts with `node`
+#  - NODE_ENV forced to production in the backend service
+#  - LiteSpeed: serves pre-built frontend from frontend/dist
+
+services:
+  backend:
+    command: >
+      sh -c "npm ci &&
+             npm run prisma:generate &&
+             npm run build &&
+             npx prisma migrate deploy &&
+             npm start"
+    environment:
+      - NODE_ENV=production
